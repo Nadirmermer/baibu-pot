@@ -1,146 +1,244 @@
 
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ThemeProvider } from '@/components/ThemeProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const AdminLogin = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    checkUser();
+  }, []);
+
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      navigate('/admin/dashboard');
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (authError) {
-        setError('Giriş bilgileri hatalı. Lütfen kontrol edin.');
-        return;
-      }
+      if (error) throw error;
 
       if (data.user) {
-        toast.success('Başarıyla giriş yapıldı');
+        toast.success('Giriş başarılı!');
         navigate('/admin/dashboard');
       }
-    } catch (err) {
-      setError('Bir hata oluştu. Lütfen tekrar deneyin.');
-      console.error('Login error:', err);
+    } catch (error: any) {
+      toast.error(error.message || 'Giriş yapılırken bir hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name,
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        // Create user profile in our users table
+        const { error: profileError } = await supabase
+          .from('users')
+          .insert([
+            {
+              id: data.user.id,
+              email: data.user.email!,
+              name: name,
+              role: 'user', // Default role, admin can change later
+              is_approved: false // Requires admin approval
+            }
+          ]);
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+        }
+
+        toast.success('Kayıt başarılı! E-posta adresinizi doğrulayın.');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Kayıt olurken bir hata oluştu');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-block">
-            <img src="/logo.png" alt="BAİBÜ PÖT" className="h-16 mx-auto mb-4" />
-          </Link>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Admin Girişi
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">
-            Yönetim paneline erişmek için giriş yapın
-          </p>
-        </div>
-
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-center">Giriş Yap</CardTitle>
-            <CardDescription className="text-center">
-              Admin hesabınızla oturum açın
-            </CardDescription>
+    <ThemeProvider>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold text-slate-900 dark:text-white">
+              Admin Paneli
+            </CardTitle>
+            <p className="text-slate-600 dark:text-slate-400">
+              Yönetim paneline erişim için giriş yapın
+            </p>
           </CardHeader>
-          
-          <form onSubmit={handleLogin}>
-            <CardContent className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="email">E-posta</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@baibu.edu.tr"
-                    className="pl-10"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Şifre</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="pl-10 pr-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </CardContent>
-
-            <CardFooter className="flex flex-col space-y-4">
-              <Button 
-                type="submit" 
-                className="w-full"
-                disabled={loading}
-              >
-                {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-              </Button>
+          <CardContent>
+            <Tabs defaultValue="login" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Giriş Yap</TabsTrigger>
+                <TabsTrigger value="signup">Kayıt Ol</TabsTrigger>
+              </TabsList>
               
-              <Link 
-                to="/" 
-                className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                ← Anasayfaya dön
-              </Link>
-            </CardFooter>
-          </form>
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">E-posta</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="admin@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Şifre</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? (
+                      'Giriş yapılıyor...'
+                    ) : (
+                      <>
+                        <LogIn className="mr-2 h-4 w-4" />
+                        Giriş Yap
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="signup">
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name">Ad Soyad</Label>
+                    <Input
+                      id="signup-name"
+                      type="text"
+                      placeholder="Ad Soyad"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">E-posta</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="email@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Şifre</Label>
+                    <div className="relative">
+                      <Input
+                        id="signup-password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? (
+                      'Kayıt oluşturuluyor...'
+                    ) : (
+                      <>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Kayıt Ol
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 text-center">
+                    Kayıt olduktan sonra admin onayı gereklidir.
+                  </p>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
         </Card>
       </div>
-    </div>
+    </ThemeProvider>
   );
 };
 

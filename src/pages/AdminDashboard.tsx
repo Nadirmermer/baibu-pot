@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +17,8 @@ import {
   Plus,
   Building2,
   ClipboardList,
-  GraduationCap
+  GraduationCap,
+  Eye
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -33,6 +33,7 @@ import TeamMemberModal from '@/components/admin/TeamMemberModal';
 import { useNews, useEvents, useMagazineIssues, useSurveys, useSponsors, useTeamMembers, useAcademicDocuments, useInternships, useContactMessages } from '@/hooks/useSupabaseData';
 
 interface User {
+  id: string;
   email: string;
   role: string;
   name?: string;
@@ -68,16 +69,35 @@ const AdminDashboard = () => {
   }, []);
 
   const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
       navigate('/admin');
       return;
     }
-    setUser({
-      email: user.email || '',
-      role: 'baskan',
-      name: user.user_metadata?.name
-    });
+
+    // Get user profile from our users table
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', authUser.id)
+      .single();
+
+    if (userProfile) {
+      setUser({
+        id: authUser.id,
+        email: authUser.email || '',
+        role: userProfile.role || 'user',
+        name: userProfile.name || authUser.user_metadata?.name
+      });
+    } else {
+      // Fallback for users without profile
+      setUser({
+        id: authUser.id,
+        email: authUser.email || '',
+        role: 'baskan',
+        name: authUser.user_metadata?.name
+      });
+    }
   };
 
   const handleLogout = async () => {
@@ -134,7 +154,7 @@ const AdminDashboard = () => {
       } else {
         const { error } = await supabase
           .from('news')
-          .insert([{ ...newsData, author_id: user?.email }]);
+          .insert([{ ...newsData, author_id: user?.id }]);
         if (error) throw error;
         toast.success('Haber eklendi');
       }
@@ -158,7 +178,7 @@ const AdminDashboard = () => {
       } else {
         const { error } = await supabase
           .from('events')
-          .insert([{ ...eventData, created_by: user?.email }]);
+          .insert([{ ...eventData, created_by: user?.id }]);
         if (error) throw error;
         toast.success('Etkinlik eklendi');
       }
@@ -182,7 +202,7 @@ const AdminDashboard = () => {
       } else {
         const { error } = await supabase
           .from('magazine_issues')
-          .insert([{ ...magazineData, created_by: user?.email }]);
+          .insert([{ ...magazineData, created_by: user?.id }]);
         if (error) throw error;
         toast.success('Dergi eklendi');
       }
@@ -230,7 +250,7 @@ const AdminDashboard = () => {
       } else {
         const { error } = await supabase
           .from('surveys')
-          .insert([{ ...surveyData, created_by: user?.email }]);
+          .insert([{ ...surveyData, created_by: user?.id }]);
         if (error) throw error;
         toast.success('Anket eklendi');
       }
@@ -722,7 +742,148 @@ const AdminDashboard = () => {
               </TabsContent>
             )}
 
-            {/* Other tabs will be similar with responsive design... */}
+            {/* Documents Tab */}
+            {hasPermission('documents') && (
+              <TabsContent value="documents" className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-2xl font-bold">Akademik Belgeler</h2>
+                  <Button onClick={() => toast.info('Belge ekleme modalı henüz hazır değil')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Yeni Belge
+                  </Button>
+                </div>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {documents.map(doc => (
+                        <div key={doc.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium truncate">{doc.title}</h3>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <Badge variant="outline">{doc.category}</Badge>
+                              <span className="text-sm text-muted-foreground">
+                                {new Date(doc.created_at).toLocaleDateString('tr-TR')}
+                              </span>
+                              <span className="text-sm text-muted-foreground">
+                                {doc.downloads} indirme
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2 flex-shrink-0">
+                            <Button variant="outline" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {documents.length === 0 && (
+                        <p className="text-center text-muted-foreground py-8">Henüz belge bulunmuyor</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+
+            {/* Internships Tab */}
+            {hasPermission('internships') && (
+              <TabsContent value="internships" className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-2xl font-bold">Staj İlanları</h2>
+                  <Button onClick={() => toast.info('Staj ekleme modalı henüz hazır değil')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Yeni Staj İlanı
+                  </Button>
+                </div>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {internships.map(internship => (
+                        <div key={internship.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium truncate">{internship.position}</h3>
+                            <p className="text-sm text-muted-foreground">{internship.company_name}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <Badge variant="outline">{internship.location}</Badge>
+                              <Badge variant={internship.active ? "default" : "secondary"}>
+                                {internship.active ? "Aktif" : "Pasif"}
+                              </Badge>
+                              {internship.application_deadline && (
+                                <span className="text-sm text-muted-foreground">
+                                  Son Başvuru: {new Date(internship.application_deadline).toLocaleDateString('tr-TR')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex space-x-2 flex-shrink-0">
+                            <Button variant="outline" size="sm">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {internships.length === 0 && (
+                        <p className="text-center text-muted-foreground py-8">Henüz staj ilanı bulunmuyor</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+
+            {/* Messages Tab */}
+            {hasPermission('messages') && (
+              <TabsContent value="messages" className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-2xl font-bold">İletişim Mesajları</h2>
+                </div>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {messages.map(message => (
+                        <div key={message.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium truncate">{message.subject}</h3>
+                            <p className="text-sm text-muted-foreground">{message.name} - {message.email}</p>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
+                              {message.message}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <Badge variant={message.status === 'unread' ? "default" : "secondary"}>
+                                {message.status === 'unread' ? "Okunmadı" : "Okundu"}
+                              </Badge>
+                              <span className="text-sm text-muted-foreground">
+                                {new Date(message.created_at).toLocaleDateString('tr-TR')}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2 flex-shrink-0">
+                            <Button variant="outline" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {messages.length === 0 && (
+                        <p className="text-center text-muted-foreground py-8">Henüz mesaj bulunmuyor</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
 

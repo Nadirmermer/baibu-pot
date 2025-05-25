@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
@@ -10,6 +11,7 @@ import Sponsorlar from '@/pages/Sponsorlar';
 import Ekipler from '@/pages/Ekipler';
 import AkademikBelgeler from '@/pages/AkademikBelgeler';
 import Stajlar from '@/pages/Stajlar';
+import SSS from '@/pages/SSS';
 import Iletisim from '@/pages/Iletisim';
 import PdfFlipbookDemo from '@/pages/PdfFlipbookDemo';
 import AdminLogin from '@/pages/AdminLogin';
@@ -38,6 +40,7 @@ function App() {
           <Route path="/ekipler" element={<Ekipler />} />
           <Route path="/akademik-belgeler" element={<AkademikBelgeler />} />
           <Route path="/stajlar" element={<Stajlar />} />
+          <Route path="/sss" element={<SSS />} />
           <Route path="/iletisim" element={<Iletisim />} />
           <Route path="/pdf-demo" element={<PdfFlipbookDemo />} />
           <Route path="/admin" element={<AdminLogin />} />
