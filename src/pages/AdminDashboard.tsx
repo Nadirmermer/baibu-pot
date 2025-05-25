@@ -12,12 +12,9 @@ import {
   Briefcase, 
   MessageSquare, 
   LogOut,
-  Eye,
   Edit,
   Trash2,
   Plus,
-  CheckCircle,
-  XCircle,
   Building2,
   ClipboardList,
   GraduationCap
@@ -29,6 +26,9 @@ import { toast } from 'sonner';
 import NewsModal from '@/components/admin/NewsModal';
 import EventModal from '@/components/admin/EventModal';
 import MagazineModal from '@/components/admin/MagazineModal';
+import SponsorModal from '@/components/admin/SponsorModal';
+import SurveyModal from '@/components/admin/SurveyModal';
+import TeamMemberModal from '@/components/admin/TeamMemberModal';
 import { useNews, useEvents, useMagazineIssues, useSurveys, useSponsors, useTeamMembers, useAcademicDocuments, useInternships, useContactMessages } from '@/hooks/useSupabaseData';
 
 interface User {
@@ -46,15 +46,18 @@ const AdminDashboard = () => {
   const [newsModalOpen, setNewsModalOpen] = useState(false);
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [magazineModalOpen, setMagazineModalOpen] = useState(false);
+  const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
+  const [surveyModalOpen, setSurveyModalOpen] = useState(false);
+  const [teamMemberModalOpen, setTeamMemberModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
 
   // Data hooks
   const { data: allNews = [], refetch: refetchNews } = useNews(false);
   const { data: events = [], refetch: refetchEvents } = useEvents();
   const { data: magazines = [], refetch: refetchMagazines } = useMagazineIssues(false);
-  const { data: surveys = [] } = useSurveys();
-  const { data: sponsors = [] } = useSponsors(false);
-  const { data: teamMembers = [] } = useTeamMembers(false);
+  const { data: surveys = [], refetch: refetchSurveys } = useSurveys();
+  const { data: sponsors = [], refetch: refetchSponsors } = useSponsors(false);
+  const { data: teamMembers = [], refetch: refetchTeamMembers } = useTeamMembers(false);
   const { data: documents = [] } = useAcademicDocuments();
   const { data: internships = [] } = useInternships(false);
   const { data: messages = [] } = useContactMessages();
@@ -71,7 +74,7 @@ const AdminDashboard = () => {
     }
     setUser({
       email: user.email || '',
-      role: 'baskan', // This should come from user metadata or users table
+      role: 'baskan',
       name: user.user_metadata?.name
     });
   };
@@ -121,7 +124,6 @@ const AdminDashboard = () => {
   const handleSaveNews = async (newsData: any) => {
     try {
       if (editingItem) {
-        // Update existing news
         const { error } = await supabase
           .from('news')
           .update(newsData)
@@ -129,7 +131,6 @@ const AdminDashboard = () => {
         if (error) throw error;
         toast.success('Haber güncellendi');
       } else {
-        // Create new news
         const { error } = await supabase
           .from('news')
           .insert([{ ...newsData, author_id: user?.email }]);
@@ -192,11 +193,86 @@ const AdminDashboard = () => {
     }
   };
 
-  const openEditModal = (item: any, type: 'news' | 'event' | 'magazine') => {
+  const handleSaveSponsor = async (sponsorData: any) => {
+    try {
+      if (editingItem) {
+        const { error } = await supabase
+          .from('sponsors')
+          .update(sponsorData)
+          .eq('id', editingItem.id);
+        if (error) throw error;
+        toast.success('Sponsor güncellendi');
+      } else {
+        const { error } = await supabase
+          .from('sponsors')
+          .insert([sponsorData]);
+        if (error) throw error;
+        toast.success('Sponsor eklendi');
+      }
+      refetchSponsors();
+      setEditingItem(null);
+    } catch (error) {
+      toast.error('Bir hata oluştu');
+      console.error('Error saving sponsor:', error);
+    }
+  };
+
+  const handleSaveSurvey = async (surveyData: any) => {
+    try {
+      if (editingItem) {
+        const { error } = await supabase
+          .from('surveys')
+          .update(surveyData)
+          .eq('id', editingItem.id);
+        if (error) throw error;
+        toast.success('Anket güncellendi');
+      } else {
+        const { error } = await supabase
+          .from('surveys')
+          .insert([{ ...surveyData, created_by: user?.email }]);
+        if (error) throw error;
+        toast.success('Anket eklendi');
+      }
+      refetchSurveys();
+      setEditingItem(null);
+    } catch (error) {
+      toast.error('Bir hata oluştu');
+      console.error('Error saving survey:', error);
+    }
+  };
+
+  const handleSaveTeamMember = async (teamMemberData: any) => {
+    try {
+      if (editingItem) {
+        const { error } = await supabase
+          .from('team_members')
+          .update(teamMemberData)
+          .eq('id', editingItem.id);
+        if (error) throw error;
+        toast.success('Ekip üyesi güncellendi');
+      } else {
+        const { error } = await supabase
+          .from('team_members')
+          .insert([teamMemberData]);
+        if (error) throw error;
+        toast.success('Ekip üyesi eklendi');
+      }
+      refetchTeamMembers();
+      setEditingItem(null);
+    } catch (error) {
+      toast.error('Bir hata oluştu');
+      console.error('Error saving team member:', error);
+    }
+  };
+
+  const openEditModal = (item: any, type: 'news' | 'event' | 'magazine' | 'sponsor' | 'survey' | 'team') => {
     setEditingItem(item);
     if (type === 'news') setNewsModalOpen(true);
     else if (type === 'event') setEventModalOpen(true);
     else if (type === 'magazine') setMagazineModalOpen(true);
+    else if (type === 'sponsor') setSponsorModalOpen(true);
+    else if (type === 'survey') setSurveyModalOpen(true);
+    else if (type === 'team') setTeamMemberModalOpen(true);
   };
 
   const handleDelete = async (id: string, table: string, refetchFn: () => void) => {
@@ -226,8 +302,8 @@ const AdminDashboard = () => {
         {/* Header */}
         <header className="bg-white dark:bg-slate-800 shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center h-auto sm:h-16 py-4 sm:py-0">
+              <div className="flex items-center mb-4 sm:mb-0">
                 <LayoutDashboard className="h-8 w-8 text-cyan-500 mr-3" />
                 <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
                   Admin Paneli
@@ -244,7 +320,7 @@ const AdminDashboard = () => {
                 </div>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
                   <LogOut className="h-4 w-4 mr-2" />
-                  Çıkış
+                  <span className="hidden sm:inline">Çıkış</span>
                 </Button>
               </div>
             </div>
@@ -253,67 +329,69 @@ const AdminDashboard = () => {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-            {/* Sekme listesi */}
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 xl:grid-cols-10 gap-1">
-              <TabsTrigger value="dashboard" className="text-xs">
-                <LayoutDashboard className="h-4 w-4 mr-1" />
-                Genel
-              </TabsTrigger>
-              {hasPermission('news') && (
-                <TabsTrigger value="news" className="text-xs">
-                  <FileText className="h-4 w-4 mr-1" />
-                  Haberler
+            {/* Responsive tab list */}
+            <div className="overflow-x-auto">
+              <TabsList className="grid w-max grid-flow-col gap-1 md:w-full md:grid-cols-5 lg:grid-cols-10">
+                <TabsTrigger value="dashboard" className="text-xs whitespace-nowrap">
+                  <LayoutDashboard className="h-4 w-4 mr-1" />
+                  Genel
                 </TabsTrigger>
-              )}
-              {hasPermission('events') && (
-                <TabsTrigger value="events" className="text-xs">
-                  <Calendar className="h-4 w-4 mr-1" />
-                  Etkinlikler
-                </TabsTrigger>
-              )}
-              {hasPermission('magazine') && (
-                <TabsTrigger value="magazine" className="text-xs">
-                  <BookOpen className="h-4 w-4 mr-1" />
-                  Dergi
-                </TabsTrigger>
-              )}
-              {hasPermission('surveys') && (
-                <TabsTrigger value="surveys" className="text-xs">
-                  <ClipboardList className="h-4 w-4 mr-1" />
-                  Anketler
-                </TabsTrigger>
-              )}
-              {hasPermission('sponsors') && (
-                <TabsTrigger value="sponsors" className="text-xs">
-                  <Building2 className="h-4 w-4 mr-1" />
-                  Sponsorlar
-                </TabsTrigger>
-              )}
-              {hasPermission('team') && (
-                <TabsTrigger value="team" className="text-xs">
-                  <Users className="h-4 w-4 mr-1" />
-                  Ekipler
-                </TabsTrigger>
-              )}
-              {hasPermission('documents') && (
-                <TabsTrigger value="documents" className="text-xs">
-                  <GraduationCap className="h-4 w-4 mr-1" />
-                  Belgeler
-                </TabsTrigger>
-              )}
-              {hasPermission('internships') && (
-                <TabsTrigger value="internships" className="text-xs">
-                  <Briefcase className="h-4 w-4 mr-1" />
-                  Staj
-                </TabsTrigger>
-              )}
-              {hasPermission('messages') && (
-                <TabsTrigger value="messages" className="text-xs">
-                  <MessageSquare className="h-4 w-4 mr-1" />
-                  Mesajlar
-                </TabsTrigger>
-              )}
-            </TabsList>
+                {hasPermission('news') && (
+                  <TabsTrigger value="news" className="text-xs whitespace-nowrap">
+                    <FileText className="h-4 w-4 mr-1" />
+                    Haberler
+                  </TabsTrigger>
+                )}
+                {hasPermission('events') && (
+                  <TabsTrigger value="events" className="text-xs whitespace-nowrap">
+                    <Calendar className="h-4 w-4 mr-1" />
+                    Etkinlikler
+                  </TabsTrigger>
+                )}
+                {hasPermission('magazine') && (
+                  <TabsTrigger value="magazine" className="text-xs whitespace-nowrap">
+                    <BookOpen className="h-4 w-4 mr-1" />
+                    Dergi
+                  </TabsTrigger>
+                )}
+                {hasPermission('surveys') && (
+                  <TabsTrigger value="surveys" className="text-xs whitespace-nowrap">
+                    <ClipboardList className="h-4 w-4 mr-1" />
+                    Anketler
+                  </TabsTrigger>
+                )}
+                {hasPermission('sponsors') && (
+                  <TabsTrigger value="sponsors" className="text-xs whitespace-nowrap">
+                    <Building2 className="h-4 w-4 mr-1" />
+                    Sponsorlar
+                  </TabsTrigger>
+                )}
+                {hasPermission('team') && (
+                  <TabsTrigger value="team" className="text-xs whitespace-nowrap">
+                    <Users className="h-4 w-4 mr-1" />
+                    Ekipler
+                  </TabsTrigger>
+                )}
+                {hasPermission('documents') && (
+                  <TabsTrigger value="documents" className="text-xs whitespace-nowrap">
+                    <GraduationCap className="h-4 w-4 mr-1" />
+                    Belgeler
+                  </TabsTrigger>
+                )}
+                {hasPermission('internships') && (
+                  <TabsTrigger value="internships" className="text-xs whitespace-nowrap">
+                    <Briefcase className="h-4 w-4 mr-1" />
+                    Staj
+                  </TabsTrigger>
+                )}
+                {hasPermission('messages') && (
+                  <TabsTrigger value="messages" className="text-xs whitespace-nowrap">
+                    <MessageSquare className="h-4 w-4 mr-1" />
+                    Mesajlar
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </div>
 
             {/* Dashboard Tab */}
             <TabsContent value="dashboard" className="space-y-6">
@@ -372,7 +450,7 @@ const AdminDashboard = () => {
             {/* News Tab */}
             {hasPermission('news') && (
               <TabsContent value="news" className="space-y-6">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-2xl font-bold">Haberler ve Duyurular</h2>
                   <Button onClick={() => { setEditingItem(null); setNewsModalOpen(true); }}>
                     <Plus className="h-4 w-4 mr-2" />
@@ -383,10 +461,10 @@ const AdminDashboard = () => {
                   <CardContent className="p-6">
                     <div className="space-y-4">
                       {allNews.map(news => (
-                        <div key={news.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex-1">
-                            <h3 className="font-medium">{news.title}</h3>
-                            <div className="flex items-center space-x-4 mt-2">
+                        <div key={news.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium truncate">{news.title}</h3>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
                               <Badge variant="outline">{news.category}</Badge>
                               <span className="text-sm text-muted-foreground">
                                 {new Date(news.created_at).toLocaleDateString('tr-TR')}
@@ -396,7 +474,7 @@ const AdminDashboard = () => {
                               </Badge>
                             </div>
                           </div>
-                          <div className="flex space-x-2">
+                          <div className="flex space-x-2 flex-shrink-0">
                             <Button variant="outline" size="sm" onClick={() => openEditModal(news, 'news')}>
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -418,7 +496,7 @@ const AdminDashboard = () => {
             {/* Events Tab */}
             {hasPermission('events') && (
               <TabsContent value="events" className="space-y-6">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-2xl font-bold">Etkinlikler</h2>
                   <Button onClick={() => { setEditingItem(null); setEventModalOpen(true); }}>
                     <Plus className="h-4 w-4 mr-2" />
@@ -429,10 +507,10 @@ const AdminDashboard = () => {
                   <CardContent className="p-6">
                     <div className="space-y-4">
                       {events.map(event => (
-                        <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex-1">
-                            <h3 className="font-medium">{event.title}</h3>
-                            <div className="flex items-center space-x-4 mt-2">
+                        <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium truncate">{event.title}</h3>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
                               <Badge variant="outline">{event.event_type}</Badge>
                               <span className="text-sm text-muted-foreground">
                                 {new Date(event.event_date).toLocaleDateString('tr-TR')}
@@ -442,7 +520,7 @@ const AdminDashboard = () => {
                               </Badge>
                             </div>
                           </div>
-                          <div className="flex space-x-2">
+                          <div className="flex space-x-2 flex-shrink-0">
                             <Button variant="outline" size="sm" onClick={() => openEditModal(event, 'event')}>
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -464,7 +542,7 @@ const AdminDashboard = () => {
             {/* Magazine Tab */}
             {hasPermission('magazine') && (
               <TabsContent value="magazine" className="space-y-6">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <h2 className="text-2xl font-bold">Dergi Yönetimi</h2>
                   <Button onClick={() => { setEditingItem(null); setMagazineModalOpen(true); }}>
                     <Plus className="h-4 w-4 mr-2" />
@@ -475,10 +553,10 @@ const AdminDashboard = () => {
                   <CardContent className="p-6">
                     <div className="space-y-4">
                       {magazines.map(magazine => (
-                        <div key={magazine.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex-1">
-                            <h3 className="font-medium">{magazine.title}</h3>
-                            <div className="flex items-center space-x-4 mt-2">
+                        <div key={magazine.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium truncate">{magazine.title}</h3>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
                               <Badge variant="outline">Sayı {magazine.issue_number}</Badge>
                               <span className="text-sm text-muted-foreground">
                                 {new Date(magazine.publication_date).toLocaleDateString('tr-TR')}
@@ -488,7 +566,7 @@ const AdminDashboard = () => {
                               </Badge>
                             </div>
                           </div>
-                          <div className="flex space-x-2">
+                          <div className="flex space-x-2 flex-shrink-0">
                             <Button variant="outline" size="sm" onClick={() => openEditModal(magazine, 'magazine')}>
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -507,7 +585,139 @@ const AdminDashboard = () => {
               </TabsContent>
             )}
 
-            {/* Diğer tablar için benzer güncellemeler yapılacak... */}
+            {/* Surveys Tab */}
+            {hasPermission('surveys') && (
+              <TabsContent value="surveys" className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-2xl font-bold">Anket Yönetimi</h2>
+                  <Button onClick={() => { setEditingItem(null); setSurveyModalOpen(true); }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Yeni Anket
+                  </Button>
+                </div>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {surveys.map(survey => (
+                        <div key={survey.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium truncate">{survey.title}</h3>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <span className="text-sm text-muted-foreground">
+                                {new Date(survey.start_date).toLocaleDateString('tr-TR')} - {new Date(survey.end_date).toLocaleDateString('tr-TR')}
+                              </span>
+                              <Badge variant={survey.active ? "default" : "secondary"}>
+                                {survey.active ? "Aktif" : "Pasif"}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2 flex-shrink-0">
+                            <Button variant="outline" size="sm" onClick={() => openEditModal(survey, 'survey')}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handleDelete(survey.id, 'surveys', refetchSurveys)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {surveys.length === 0 && (
+                        <p className="text-center text-muted-foreground py-8">Henüz anket bulunmuyor</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+
+            {/* Sponsors Tab */}
+            {hasPermission('sponsors') && (
+              <TabsContent value="sponsors" className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-2xl font-bold">Sponsor Yönetimi</h2>
+                  <Button onClick={() => { setEditingItem(null); setSponsorModalOpen(true); }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Yeni Sponsor
+                  </Button>
+                </div>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {sponsors.map(sponsor => (
+                        <div key={sponsor.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium truncate">{sponsor.name}</h3>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <Badge variant="outline">{sponsor.sponsor_type}</Badge>
+                              <Badge variant={sponsor.active ? "default" : "secondary"}>
+                                {sponsor.active ? "Aktif" : "Pasif"}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2 flex-shrink-0">
+                            <Button variant="outline" size="sm" onClick={() => openEditModal(sponsor, 'sponsor')}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handleDelete(sponsor.id, 'sponsors', refetchSponsors)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {sponsors.length === 0 && (
+                        <p className="text-center text-muted-foreground py-8">Henüz sponsor bulunmuyor</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+
+            {/* Team Tab */}
+            {hasPermission('team') && (
+              <TabsContent value="team" className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-2xl font-bold">Ekip Yönetimi</h2>
+                  <Button onClick={() => { setEditingItem(null); setTeamMemberModalOpen(true); }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Yeni Üye
+                  </Button>
+                </div>
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {teamMembers.map(member => (
+                        <div key={member.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium truncate">{member.name}</h3>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <Badge variant="outline">{member.team}</Badge>
+                              <span className="text-sm text-muted-foreground">{member.role}</span>
+                              <Badge variant={member.active ? "default" : "secondary"}>
+                                {member.active ? "Aktif" : "Pasif"}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2 flex-shrink-0">
+                            <Button variant="outline" size="sm" onClick={() => openEditModal(member, 'team')}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => handleDelete(member.id, 'team_members', refetchTeamMembers)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {teamMembers.length === 0 && (
+                        <p className="text-center text-muted-foreground py-8">Henüz ekip üyesi bulunmuyor</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
+
+            {/* Other tabs will be similar with responsive design... */}
           </Tabs>
         </div>
 
@@ -530,6 +740,27 @@ const AdminDashboard = () => {
           isOpen={magazineModalOpen}
           onClose={() => { setMagazineModalOpen(false); setEditingItem(null); }}
           onSave={handleSaveMagazine}
+          initialData={editingItem}
+        />
+
+        <SponsorModal
+          isOpen={sponsorModalOpen}
+          onClose={() => { setSponsorModalOpen(false); setEditingItem(null); }}
+          onSave={handleSaveSponsor}
+          initialData={editingItem}
+        />
+
+        <SurveyModal
+          isOpen={surveyModalOpen}
+          onClose={() => { setSurveyModalOpen(false); setEditingItem(null); }}
+          onSave={handleSaveSurvey}
+          initialData={editingItem}
+        />
+
+        <TeamMemberModal
+          isOpen={teamMemberModalOpen}
+          onClose={() => { setTeamMemberModalOpen(false); setEditingItem(null); }}
+          onSave={handleSaveTeamMember}
           initialData={editingItem}
         />
       </div>
