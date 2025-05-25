@@ -276,12 +276,16 @@ const AdminDashboard = () => {
     else if (type === 'team') setTeamMemberModalOpen(true);
   };
 
-  const handleDelete = async (id: string, table: string, refetchFn: () => void) => {
+  const handleDelete = async (
+    id: string, 
+    tableName: 'news' | 'events' | 'magazine_issues' | 'sponsors' | 'surveys' | 'team_members', 
+    refetchFn: () => void
+  ) => {
     if (!confirm('Bu öğeyi silmek istediğinizden emin misiniz?')) return;
     
     try {
       const { error } = await supabase
-        .from(table)
+        .from(tableName)
         .delete()
         .eq('id', id);
       if (error) throw error;
