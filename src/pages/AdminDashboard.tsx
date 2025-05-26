@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,18 +56,18 @@ const AdminDashboard = () => {
   const [teamMemberModalOpen, setTeamMemberModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
 
-  // Data hooks with refetch
-  const { data: users, refetch: refetchUsers } = useUsers();
-  const { data: userRoles, refetch: refetchUserRoles } = useUserRoles();
-  const { data: news, refetch: refetchNews } = useNews(false);
-  const { data: events, refetch: refetchEvents } = useEvents();
-  const { data: magazines, refetch: refetchMagazines } = useMagazineIssues(false);
-  const { data: surveys, refetch: refetchSurveys } = useSurveys();
-  const { data: internships, refetch: refetchInternships } = useInternships(false);
-  const { data: documents, refetch: refetchDocuments } = useAcademicDocuments();
-  const { data: contactMessages, refetch: refetchContactMessages } = useContactMessages();
-  const { data: sponsors, refetch: refetchSponsors } = useSponsors(false);
-  const { data: teamMembers, refetch: refetchTeamMembers } = useTeamMembers(false);
+  // Data hooks
+  const { data: users } = useUsers();
+  const { data: userRoles } = useUserRoles();
+  const { data: news } = useNews(false);
+  const { data: events } = useEvents();
+  const { data: magazines } = useMagazineIssues(false);
+  const { data: surveys } = useSurveys();
+  const { data: internships } = useInternships(false);
+  const { data: documents } = useAcademicDocuments();
+  const { data: contactMessages } = useContactMessages();
+  const { data: sponsors } = useSponsors(false);
+  const { data: teamMembers } = useTeamMembers(false);
 
   useEffect(() => {
     checkUser();
@@ -176,7 +177,6 @@ const AdminDashboard = () => {
         if (error) throw error;
         toast.success('Haber eklendi');
       }
-      refetchNews();
       setEditingItem(null);
     } catch (error) {
       toast.error('Bir hata oluştu');
@@ -200,7 +200,6 @@ const AdminDashboard = () => {
         if (error) throw error;
         toast.success('Etkinlik eklendi');
       }
-      refetchEvents();
       setEditingItem(null);
     } catch (error) {
       toast.error('Bir hata oluştu');
@@ -224,7 +223,6 @@ const AdminDashboard = () => {
         if (error) throw error;
         toast.success('Dergi eklendi');
       }
-      refetchMagazines();
       setEditingItem(null);
     } catch (error) {
       toast.error('Bir hata oluştu');
@@ -248,7 +246,6 @@ const AdminDashboard = () => {
         if (error) throw error;
         toast.success('Sponsor eklendi');
       }
-      refetchSponsors();
       setEditingItem(null);
     } catch (error) {
       toast.error('Bir hata oluştu');
@@ -272,7 +269,6 @@ const AdminDashboard = () => {
         if (error) throw error;
         toast.success('Anket eklendi');
       }
-      refetchSurveys();
       setEditingItem(null);
     } catch (error) {
       toast.error('Bir hata oluştu');
@@ -296,7 +292,6 @@ const AdminDashboard = () => {
         if (error) throw error;
         toast.success('Ekip üyesi eklendi');
       }
-      refetchTeamMembers();
       setEditingItem(null);
     } catch (error) {
       toast.error('Bir hata oluştu');
@@ -316,8 +311,7 @@ const AdminDashboard = () => {
 
   const handleDelete = async (
     id: string, 
-    tableName: 'news' | 'events' | 'magazine_issues' | 'sponsors' | 'surveys' | 'team_members', 
-    refetchFn: () => void
+    tableName: 'news' | 'events' | 'magazine_issues' | 'sponsors' | 'surveys' | 'team_members'
   ) => {
     if (!confirm('Bu öğeyi silmek istediğinizden emin misiniz?')) return;
     
@@ -328,7 +322,6 @@ const AdminDashboard = () => {
         .eq('id', id);
       if (error) throw error;
       toast.success('Öğe silindi');
-      refetchFn();
     } catch (error) {
       toast.error('Silme işlemi başarısız');
       console.error('Error deleting:', error);
@@ -413,21 +406,21 @@ const AdminDashboard = () => {
     },
     {
       title: 'Toplam Belgeler',
-      value: documents.length || 0,
+      value: documents?.length || 0,
       change: '+2',
       icon: GraduationCap,
       color: 'text-green-600'
     },
     {
       title: 'Toplam Staj İlanları',
-      value: internships.length || 0,
+      value: internships?.length || 0,
       change: '+2',
       icon: Briefcase,
       color: 'text-yellow-600'
     },
     {
       title: 'Toplam Mesajlar',
-      value: contactMessages.length || 0,
+      value: contactMessages?.length || 0,
       change: '+2',
       icon: MessageSquare,
       color: 'text-blue-600'
@@ -548,7 +541,7 @@ const AdminDashboard = () => {
                   <CardContent>
                     <div className="text-2xl font-bold">{news?.length || 0}</div>
                     <p className="text-xs text-muted-foreground">
-                      {news?.filter(n => n.published).length} yayında
+                      {news?.filter(n => n.published).length || 0} yayında
                     </p>
                   </CardContent>
                 </Card>
@@ -560,7 +553,7 @@ const AdminDashboard = () => {
                   <CardContent>
                     <div className="text-2xl font-bold">{events?.length || 0}</div>
                     <p className="text-xs text-muted-foreground">
-                      {events?.filter(e => e.status === 'upcoming').length} yaklaşan
+                      {events?.filter(e => e.status === 'upcoming').length || 0} yaklaşan
                     </p>
                   </CardContent>
                 </Card>
@@ -572,7 +565,7 @@ const AdminDashboard = () => {
                   <CardContent>
                     <div className="text-2xl font-bold">{magazines?.length || 0}</div>
                     <p className="text-xs text-muted-foreground">
-                      {magazines?.filter(m => m.published).length} yayında
+                      {magazines?.filter(m => m.published).length || 0} yayında
                     </p>
                   </CardContent>
                 </Card>
@@ -582,9 +575,9 @@ const AdminDashboard = () => {
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{contactMessages.length || 0}</div>
+                    <div className="text-2xl font-bold">{contactMessages?.length || 0}</div>
                     <p className="text-xs text-muted-foreground">
-                      {contactMessages.filter(m => m.status === 'unread').length} okunmamış
+                      {contactMessages?.filter(m => m.status === 'unread').length || 0} okunmamış
                     </p>
                   </CardContent>
                 </Card>
@@ -614,31 +607,31 @@ const AdminDashboard = () => {
                 <Card>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {news?.map(news => (
-                        <div key={news.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
+                      {news?.map(newsItem => (
+                        <div key={newsItem.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-medium truncate">{news.title}</h3>
+                            <h3 className="font-medium truncate">{newsItem.title}</h3>
                             <div className="flex flex-wrap items-center gap-2 mt-2">
-                              <Badge variant="outline">{news.category}</Badge>
+                              <Badge variant="outline">{newsItem.category}</Badge>
                               <span className="text-sm text-muted-foreground">
-                                {new Date(news.created_at).toLocaleDateString('tr-TR')}
+                                {new Date(newsItem.created_at).toLocaleDateString('tr-TR')}
                               </span>
-                              <Badge variant={news.published ? "default" : "secondary"}>
-                                {news.published ? "Yayında" : "Taslak"}
+                              <Badge variant={newsItem.published ? "default" : "secondary"}>
+                                {newsItem.published ? "Yayında" : "Taslak"}
                               </Badge>
                             </div>
                           </div>
                           <div className="flex space-x-2 flex-shrink-0">
-                            <Button variant="outline" size="sm" onClick={() => openEditModal(news, 'news')}>
+                            <Button variant="outline" size="sm" onClick={() => openEditModal(newsItem, 'news')}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleDelete(news.id, 'news', refetchNews)}>
+                            <Button variant="outline" size="sm" onClick={() => handleDelete(newsItem.id, 'news')}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
                       ))}
-                      {news?.length === 0 && (
+                      {(!news || news?.length === 0) && (
                         <p className="text-center text-muted-foreground py-8">Henüz haber bulunmuyor</p>
                       )}
                     </div>
@@ -678,13 +671,13 @@ const AdminDashboard = () => {
                             <Button variant="outline" size="sm" onClick={() => openEditModal(event, 'event')}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleDelete(event.id, 'events', refetchEvents)}>
+                            <Button variant="outline" size="sm" onClick={() => handleDelete(event.id, 'events')}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
                       ))}
-                      {events?.length === 0 && (
+                      {(!events || events?.length === 0) && (
                         <p className="text-center text-muted-foreground py-8">Henüz etkinlik bulunmuyor</p>
                       )}
                     </div>
@@ -724,13 +717,13 @@ const AdminDashboard = () => {
                             <Button variant="outline" size="sm" onClick={() => openEditModal(magazine, 'magazine')}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleDelete(magazine.id, 'magazine_issues', refetchMagazines)}>
+                            <Button variant="outline" size="sm" onClick={() => handleDelete(magazine.id, 'magazine_issues')}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
                       ))}
-                      {magazines?.length === 0 && (
+                      {(!magazines || magazines?.length === 0) && (
                         <p className="text-center text-muted-foreground py-8">Henüz dergi sayısı bulunmuyor</p>
                       )}
                     </div>
@@ -752,7 +745,7 @@ const AdminDashboard = () => {
                 <Card>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {surveys.map(survey => (
+                      {surveys?.map(survey => (
                         <div key={survey.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium truncate">{survey.title}</h3>
@@ -769,13 +762,13 @@ const AdminDashboard = () => {
                             <Button variant="outline" size="sm" onClick={() => openEditModal(survey, 'survey')}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleDelete(survey.id, 'surveys', refetchSurveys)}>
+                            <Button variant="outline" size="sm" onClick={() => handleDelete(survey.id, 'surveys')}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
                       ))}
-                      {surveys.length === 0 && (
+                      {(!surveys || surveys?.length === 0) && (
                         <p className="text-center text-muted-foreground py-8">Henüz anket bulunmuyor</p>
                       )}
                     </div>
@@ -797,7 +790,7 @@ const AdminDashboard = () => {
                 <Card>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {sponsors.map(sponsor => (
+                      {sponsors?.map(sponsor => (
                         <div key={sponsor.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium truncate">{sponsor.name}</h3>
@@ -812,13 +805,13 @@ const AdminDashboard = () => {
                             <Button variant="outline" size="sm" onClick={() => openEditModal(sponsor, 'sponsor')}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleDelete(sponsor.id, 'sponsors', refetchSponsors)}>
+                            <Button variant="outline" size="sm" onClick={() => handleDelete(sponsor.id, 'sponsors')}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
                       ))}
-                      {sponsors.length === 0 && (
+                      {(!sponsors || sponsors?.length === 0) && (
                         <p className="text-center text-muted-foreground py-8">Henüz sponsor bulunmuyor</p>
                       )}
                     </div>
@@ -840,7 +833,7 @@ const AdminDashboard = () => {
                 <Card>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {teamMembers.map(member => (
+                      {teamMembers?.map(member => (
                         <div key={member.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium truncate">{member.name}</h3>
@@ -856,13 +849,13 @@ const AdminDashboard = () => {
                             <Button variant="outline" size="sm" onClick={() => openEditModal(member, 'team')}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleDelete(member.id, 'team_members', refetchTeamMembers)}>
+                            <Button variant="outline" size="sm" onClick={() => handleDelete(member.id, 'team_members')}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
                       ))}
-                      {teamMembers.length === 0 && (
+                      {(!teamMembers || teamMembers?.length === 0) && (
                         <p className="text-center text-muted-foreground py-8">Henüz ekip üyesi bulunmuyor</p>
                       )}
                     </div>
@@ -884,7 +877,7 @@ const AdminDashboard = () => {
                 <Card>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {documents.map(doc => (
+                      {documents?.map(doc => (
                         <div key={doc.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium truncate">{doc.title}</h3>
@@ -911,7 +904,7 @@ const AdminDashboard = () => {
                           </div>
                         </div>
                       ))}
-                      {documents.length === 0 && (
+                      {(!documents || documents?.length === 0) && (
                         <p className="text-center text-muted-foreground py-8">Henüz belge bulunmuyor</p>
                       )}
                     </div>
@@ -933,7 +926,7 @@ const AdminDashboard = () => {
                 <Card>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {internships.map(internship => (
+                      {internships?.map(internship => (
                         <div key={internship.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium truncate">{internship.position}</h3>
@@ -960,7 +953,7 @@ const AdminDashboard = () => {
                           </div>
                         </div>
                       ))}
-                      {internships.length === 0 && (
+                      {(!internships || internships?.length === 0) && (
                         <p className="text-center text-muted-foreground py-8">Henüz staj ilanı bulunmuyor</p>
                       )}
                     </div>
@@ -978,7 +971,7 @@ const AdminDashboard = () => {
                 <Card>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {contactMessages.map(message => (
+                      {contactMessages?.map(message => (
                         <div key={message.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium truncate">{message.subject}</h3>
@@ -1005,7 +998,7 @@ const AdminDashboard = () => {
                           </div>
                         </div>
                       ))}
-                      {contactMessages.length === 0 && (
+                      {(!contactMessages || contactMessages?.length === 0) && (
                         <p className="text-center text-muted-foreground py-8">Henüz mesaj bulunmuyor</p>
                       )}
                     </div>
