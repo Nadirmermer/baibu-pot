@@ -20,6 +20,7 @@ const TeamMemberModal = ({ isOpen, onClose, onSave, initialData }: TeamMemberMod
     name: initialData?.name || '',
     role: initialData?.role || '',
     team: initialData?.team || 'yonetim',
+    year: initialData?.year || new Date().getFullYear(),
     bio: initialData?.bio || '',
     profile_image: initialData?.profile_image || '',
     linkedin_url: initialData?.linkedin_url || '',
@@ -65,20 +66,34 @@ const TeamMemberModal = ({ isOpen, onClose, onSave, initialData }: TeamMemberMod
             />
           </div>
 
-          <div>
-            <Label htmlFor="team">Ekip</Label>
-            <Select value={formData.team} onValueChange={(value) => setFormData(prev => ({ ...prev, team: value }))}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="yonetim">Yönetim</SelectItem>
-                <SelectItem value="teknik">Teknik İşler</SelectItem>
-                <SelectItem value="etkinlik">Etkinlik</SelectItem>
-                <SelectItem value="iletisim">İletişim</SelectItem>
-                <SelectItem value="dergi">Dergi</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="team">Ekip</Label>
+              <Select value={formData.team} onValueChange={(value) => setFormData(prev => ({ ...prev, team: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yonetim">Yönetim</SelectItem>
+                  <SelectItem value="teknik">Teknik İşler</SelectItem>
+                  <SelectItem value="etkinlik">Etkinlik</SelectItem>
+                  <SelectItem value="iletisim">İletişim</SelectItem>
+                  <SelectItem value="dergi">Dergi</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="year">Yıl</Label>
+              <Input
+                id="year"
+                type="number"
+                value={formData.year}
+                onChange={(e) => setFormData(prev => ({ ...prev, year: parseInt(e.target.value) || new Date().getFullYear() }))}
+                min="2010"
+                max="2030"
+                required
+              />
+            </div>
           </div>
 
           <div>

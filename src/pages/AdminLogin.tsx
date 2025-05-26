@@ -5,19 +5,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useCreateUserRole } from '@/hooks/useSupabaseData';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [selectedRole, setSelectedRole] = useState('teknik_ekip');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const createUserRole = useCreateUserRole();
 
   useEffect(() => {
     checkUser();
@@ -58,7 +63,8 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      // Önce kullanıcıyı Supabase Auth'a kaydet
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -68,33 +74,58 @@ const AdminLogin = () => {
         }
       });
 
-      if (error) throw error;
+      if (authError) throw authError;
 
-      if (data.user) {
-        // Create user profile in our users table
-        const { error: profileError } = await supabase
+      if (authData.user) {
+        // Kullanıcıyı users tablosuna ekle
+        const { error: userError } = await supabase
           .from('users')
           .insert([
             {
-              id: data.user.id,
-              email: data.user.email!,
+              id: authData.user.id,
+              email: authData.user.email!,
               name: name,
-              role: 'user', // Default role, admin can change later
-              is_approved: false // Requires admin approval
             }
           ]);
 
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
+        if (userError && !userError.message.includes('duplicate key')) {
+          console.error('User creation error:', userError);
         }
 
-        toast.success('Kayıt başarılı! E-posta adresinizi doğrulayın.');
+        // Seçilen rolü ekle (onay bekleyecek)
+        try {
+          await createUserRole.mutateAsync({
+            user_id: authData.user.id,
+            role: selectedRole,
+            is_approved: false
+          });
+        } catch (roleError) {
+          console.error('Role creation error:', roleError);
+        }
+
+        toast.success('Kayıt başarılı! E-posta adresinizi doğrulayın ve rol onayını bekleyin.');
       }
     } catch (error: any) {
       toast.error(error.message || 'Kayıt olurken bir hata oluştu');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getRoleDisplayName = (role: string) => {
+    const roleNames: Record<string, string> = {
+      'baskan': 'Başkan',
+      'baskan_yardimcisi': 'Başkan Yardımcısı',
+      'teknik_koordinator': 'Teknik Koordinatör',
+      'teknik_ekip': 'Teknik Ekip',
+      'etkinlik_koordinator': 'Etkinlik Koordinatör',
+      'etkinlik_ekip': 'Etkinlik Ekip',
+      'iletisim_koordinator': 'İletişim Koordinatör',
+      'iletisim_ekip': 'İletişim Ekip',
+      'dergi_koordinator': 'Dergi Koordinatör',
+      'dergi_ekip': 'Dergi Ekip',
+    };
+    return roleNames[role] || role;
   };
 
   return (
@@ -219,6 +250,26 @@ const AdminLogin = () => {
                       </Button>
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Rol Seçin</Label>
+                    <Select value={selectedRole} onValueChange={setSelectedRole}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="baskan">Başkan</SelectItem>
+                        <SelectItem value="baskan_yardimcisi">Başkan Yardımcısı</SelectItem>
+                        <SelectItem value="teknik_koordinator">Teknik Koordinatör</SelectItem>
+                        <SelectItem value="teknik_ekip">Teknik Ekip</SelectItem>
+                        <SelectItem value="etkinlik_koordinator">Etkinlik Koordinatör</SelectItem>
+                        <SelectItem value="etkinlik_ekip">Etkinlik Ekip</SelectItem>
+                        <SelectItem value="iletisim_koordinator">İletişim Koordinatör</SelectItem>
+                        <SelectItem value="iletisim_ekip">İletişim Ekip</SelectItem>
+                        <SelectItem value="dergi_koordinator">Dergi Koordinatör</SelectItem>
+                        <SelectItem value="dergi_ekip">Dergi Ekip</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? (
                       'Kayıt oluşturuluyor...'
@@ -230,7 +281,7 @@ const AdminLogin = () => {
                     )}
                   </Button>
                   <p className="text-xs text-slate-600 dark:text-slate-400 text-center">
-                    Kayıt olduktan sonra admin onayı gereklidir.
+                    Kayıt olduktan sonra seçtiğiniz rol için admin onayı gereklidir.
                   </p>
                 </form>
               </TabsContent>
