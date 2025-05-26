@@ -18,7 +18,8 @@ import {
   Building2,
   ClipboardList,
   GraduationCap,
-  Eye
+  Eye,
+  Shield
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -30,7 +31,7 @@ import MagazineModal from '@/components/admin/MagazineModal';
 import SponsorModal from '@/components/admin/SponsorModal';
 import SurveyModal from '@/components/admin/SurveyModal';
 import TeamMemberModal from '@/components/admin/TeamMemberModal';
-import { useNews, useEvents, useMagazineIssues, useSurveys, useSponsors, useTeamMembers, useAcademicDocuments, useInternships, useContactMessages } from '@/hooks/useSupabaseData';
+import { useNews, useEvents, useMagazineIssues, useSurveys, useSponsors, useTeamMembers, useAcademicDocuments, useInternships, useContactMessages, useUsers, useUserRoles } from '@/hooks/useSupabaseData';
 
 interface User {
   id: string;
@@ -54,15 +55,17 @@ const AdminDashboard = () => {
   const [editingItem, setEditingItem] = useState<any>(null);
 
   // Data hooks
-  const { data: allNews = [], refetch: refetchNews } = useNews(false);
-  const { data: events = [], refetch: refetchEvents } = useEvents();
-  const { data: magazines = [], refetch: refetchMagazines } = useMagazineIssues(false);
-  const { data: surveys = [], refetch: refetchSurveys } = useSurveys();
-  const { data: sponsors = [], refetch: refetchSponsors } = useSponsors(false);
-  const { data: teamMembers = [], refetch: refetchTeamMembers } = useTeamMembers(false);
-  const { data: documents = [] } = useAcademicDocuments();
-  const { data: internships = [] } = useInternships(false);
-  const { data: messages = [] } = useContactMessages();
+  const { data: users } = useUsers();
+  const { data: userRoles } = useUserRoles();
+  const { data: news } = useNews(false);
+  const { data: events } = useEvents();
+  const { data: magazines } = useMagazineIssues(false);
+  const { data: surveys } = useSurveys();
+  const { data: internships } = useInternships(false);
+  const { data: documents } = useAcademicDocuments();
+  const { data: contactMessages } = useContactMessages();
+  const { data: sponsors } = useSponsors(false);
+  const { data: teamMembers } = useTeamMembers(false);
 
   useEffect(() => {
     checkUser();
@@ -321,6 +324,101 @@ const AdminDashboard = () => {
     return <div>Yükleniyor...</div>;
   }
 
+  const getPendingCount = (category: string) => {
+    switch (category) {
+      case 'news':
+        return news?.filter(item => !item.published).length || 0;
+      case 'magazines':
+        return magazines?.filter(item => !item.published).length || 0;
+      case 'users':
+        return userRoles?.filter(role => !role.is_approved).length || 0;
+      case 'contact':
+        return contactMessages?.filter(msg => msg.status === 'unread').length || 0;
+      default:
+        return 0;
+    }
+  };
+
+  const stats = [
+    {
+      title: 'Toplam Kullanıcı',
+      value: users?.length || 0,
+      change: '+2',
+      icon: Users,
+      color: 'text-blue-600'
+    },
+    {
+      title: 'Bekleyen Roller',
+      value: getPendingCount('users'),
+      change: `${getPendingCount('users')} beklemede`,
+      icon: Shield,
+      color: 'text-amber-600'
+    },
+    {
+      title: 'Toplam Haberler',
+      value: news?.length || 0,
+      change: '+2',
+      icon: FileText,
+      color: 'text-cyan-600'
+    },
+    {
+      title: 'Toplam Etkinlikler',
+      value: events?.length || 0,
+      change: '+2',
+      icon: Calendar,
+      color: 'text-green-600'
+    },
+    {
+      title: 'Toplam Dergi Sayıları',
+      value: magazines?.length || 0,
+      change: '+2',
+      icon: BookOpen,
+      color: 'text-yellow-600'
+    },
+    {
+      title: 'Toplam Anketler',
+      value: surveys?.length || 0,
+      change: '+2',
+      icon: ClipboardList,
+      color: 'text-purple-600'
+    },
+    {
+      title: 'Toplam Sponsorlar',
+      value: sponsors?.length || 0,
+      change: '+2',
+      icon: Building2,
+      color: 'text-pink-600'
+    },
+    {
+      title: 'Toplam Ekipler',
+      value: teamMembers?.length || 0,
+      change: '+2',
+      icon: Users,
+      color: 'text-blue-600'
+    },
+    {
+      title: 'Toplam Belgeler',
+      value: documents.length || 0,
+      change: '+2',
+      icon: GraduationCap,
+      color: 'text-green-600'
+    },
+    {
+      title: 'Toplam Staj İlanları',
+      value: internships.length || 0,
+      change: '+2',
+      icon: Briefcase,
+      color: 'text-yellow-600'
+    },
+    {
+      title: 'Toplam Mesajlar',
+      value: contactMessages.length || 0,
+      change: '+2',
+      icon: MessageSquare,
+      color: 'text-blue-600'
+    }
+  ];
+
   return (
     <ThemeProvider>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
@@ -357,7 +455,7 @@ const AdminDashboard = () => {
             {/* Responsive tab list */}
             <div className="overflow-x-auto">
               <TabsList className="grid w-max grid-flow-col gap-1 md:w-full md:grid-cols-5 lg:grid-cols-10">
-                <TabsTrigger value="dashboard" className="text-xs whitespace-nowrap">
+                <TabsTrigger value="overview" className="text-xs whitespace-nowrap">
                   <LayoutDashboard className="h-4 w-4 mr-1" />
                   Genel
                 </TabsTrigger>
@@ -419,7 +517,7 @@ const AdminDashboard = () => {
             </div>
 
             {/* Dashboard Tab */}
-            <TabsContent value="dashboard" className="space-y-6">
+            <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -427,9 +525,9 @@ const AdminDashboard = () => {
                     <FileText className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{allNews.length}</div>
+                    <div className="text-2xl font-bold">{news?.length || 0}</div>
                     <p className="text-xs text-muted-foreground">
-                      {allNews.filter(n => n.published).length} yayında
+                      {news?.filter(n => n.published).length} yayında
                     </p>
                   </CardContent>
                 </Card>
@@ -439,9 +537,9 @@ const AdminDashboard = () => {
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{events.length}</div>
+                    <div className="text-2xl font-bold">{events?.length || 0}</div>
                     <p className="text-xs text-muted-foreground">
-                      {events.filter(e => e.status === 'upcoming').length} yaklaşan
+                      {events?.filter(e => e.status === 'upcoming').length} yaklaşan
                     </p>
                   </CardContent>
                 </Card>
@@ -451,9 +549,9 @@ const AdminDashboard = () => {
                     <BookOpen className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{magazines.length}</div>
+                    <div className="text-2xl font-bold">{magazines?.length || 0}</div>
                     <p className="text-xs text-muted-foreground">
-                      {magazines.filter(m => m.published).length} yayında
+                      {magazines?.filter(m => m.published).length} yayında
                     </p>
                   </CardContent>
                 </Card>
@@ -463,9 +561,9 @@ const AdminDashboard = () => {
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{messages.length}</div>
+                    <div className="text-2xl font-bold">{contactMessages.length || 0}</div>
                     <p className="text-xs text-muted-foreground">
-                      {messages.filter(m => m.status === 'unread').length} okunmamış
+                      {contactMessages.filter(m => m.status === 'unread').length} okunmamış
                     </p>
                   </CardContent>
                 </Card>
@@ -485,7 +583,7 @@ const AdminDashboard = () => {
                 <Card>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {allNews.map(news => (
+                      {news?.map(news => (
                         <div key={news.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium truncate">{news.title}</h3>
@@ -509,7 +607,7 @@ const AdminDashboard = () => {
                           </div>
                         </div>
                       ))}
-                      {allNews.length === 0 && (
+                      {news?.length === 0 && (
                         <p className="text-center text-muted-foreground py-8">Henüz haber bulunmuyor</p>
                       )}
                     </div>
@@ -531,7 +629,7 @@ const AdminDashboard = () => {
                 <Card>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {events.map(event => (
+                      {events?.map(event => (
                         <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium truncate">{event.title}</h3>
@@ -555,7 +653,7 @@ const AdminDashboard = () => {
                           </div>
                         </div>
                       ))}
-                      {events.length === 0 && (
+                      {events?.length === 0 && (
                         <p className="text-center text-muted-foreground py-8">Henüz etkinlik bulunmuyor</p>
                       )}
                     </div>
@@ -577,7 +675,7 @@ const AdminDashboard = () => {
                 <Card>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {magazines.map(magazine => (
+                      {magazines?.map(magazine => (
                         <div key={magazine.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium truncate">{magazine.title}</h3>
@@ -601,7 +699,7 @@ const AdminDashboard = () => {
                           </div>
                         </div>
                       ))}
-                      {magazines.length === 0 && (
+                      {magazines?.length === 0 && (
                         <p className="text-center text-muted-foreground py-8">Henüz dergi sayısı bulunmuyor</p>
                       )}
                     </div>
@@ -849,7 +947,7 @@ const AdminDashboard = () => {
                 <Card>
                   <CardContent className="p-6">
                     <div className="space-y-4">
-                      {messages.map(message => (
+                      {contactMessages.map(message => (
                         <div key={message.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg gap-4">
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium truncate">{message.subject}</h3>
@@ -876,7 +974,7 @@ const AdminDashboard = () => {
                           </div>
                         </div>
                       ))}
-                      {messages.length === 0 && (
+                      {contactMessages.length === 0 && (
                         <p className="text-center text-muted-foreground py-8">Henüz mesaj bulunmuyor</p>
                       )}
                     </div>

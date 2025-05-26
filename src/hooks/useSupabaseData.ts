@@ -29,7 +29,7 @@ export const useUserRoles = () => {
         .from('user_roles')
         .select(`
           *,
-          users(name, email)
+          users:user_id(name, email)
         `)
         .order('created_at', { ascending: false });
       if (error) throw error;
