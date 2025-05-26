@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -20,7 +19,7 @@ export const useUsers = () => {
   });
 };
 
-// User roles hooks
+// User roles hooks - Fixed the relationship issue by specifying the column hint
 export const useUserRoles = () => {
   return useQuery({
     queryKey: ['user_roles'],
@@ -29,7 +28,7 @@ export const useUserRoles = () => {
         .from('user_roles')
         .select(`
           *,
-          users:user_id(name, email)
+          user:users!user_id(name, email)
         `)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -77,7 +76,7 @@ export const useUpdateUserRole = () => {
   });
 };
 
-// News hooks
+// News hooks - Added refetch function
 export const useNews = (published = true) => {
   return useQuery({
     queryKey: ['news', published],

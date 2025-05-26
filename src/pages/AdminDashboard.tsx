@@ -31,19 +31,20 @@ import MagazineModal from '@/components/admin/MagazineModal';
 import SponsorModal from '@/components/admin/SponsorModal';
 import SurveyModal from '@/components/admin/SurveyModal';
 import TeamMemberModal from '@/components/admin/TeamMemberModal';
+import UserRoleManagement from '@/components/admin/UserRoleManagement';
 import { useNews, useEvents, useMagazineIssues, useSurveys, useSponsors, useTeamMembers, useAcademicDocuments, useInternships, useContactMessages, useUsers, useUserRoles } from '@/hooks/useSupabaseData';
 
 interface User {
   id: string;
   email: string;
-  role: string;
   name?: string;
+  userRoles?: string[]; // Changed from single role to array of roles
 }
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('overview');
   
   // Modal states
   const [newsModalOpen, setNewsModalOpen] = useState(false);
@@ -54,18 +55,18 @@ const AdminDashboard = () => {
   const [teamMemberModalOpen, setTeamMemberModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
 
-  // Data hooks
-  const { data: users } = useUsers();
-  const { data: userRoles } = useUserRoles();
-  const { data: news } = useNews(false);
-  const { data: events } = useEvents();
-  const { data: magazines } = useMagazineIssues(false);
-  const { data: surveys } = useSurveys();
-  const { data: internships } = useInternships(false);
-  const { data: documents } = useAcademicDocuments();
-  const { data: contactMessages } = useContactMessages();
-  const { data: sponsors } = useSponsors(false);
-  const { data: teamMembers } = useTeamMembers(false);
+  // Data hooks with refetch
+  const { data: users, refetch: refetchUsers } = useUsers();
+  const { data: userRoles, refetch: refetchUserRoles } = useUserRoles();
+  const { data: news, refetch: refetchNews } = useNews(false);
+  const { data: events, refetch: refetchEvents } = useEvents();
+  const { data: magazines, refetch: refetchMagazines } = useMagazineIssues(false);
+  const { data: surveys, refetch: refetchSurveys } = useSurveys();
+  const { data: internships, refetch: refetchInternships } = useInternships(false);
+  const { data: documents, refetch: refetchDocuments } = useAcademicDocuments();
+  const { data: contactMessages, refetch: refetchContactMessages } = useContactMessages();
+  const { data: sponsors, refetch: refetchSponsors } = useSponsors(false);
+  const { data: teamMembers, refetch: refetchTeamMembers } = useTeamMembers(false);
 
   useEffect(() => {
     checkUser();
@@ -78,27 +79,33 @@ const AdminDashboard = () => {
       return;
     }
 
-    // Get user profile from our users table
+    // Get user profile and roles
     const { data: userProfile } = await supabase
       .from('users')
       .select('*')
       .eq('id', authUser.id)
       .single();
 
+    const { data: userRoleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', authUser.id)
+      .eq('is_approved', true);
+
     if (userProfile) {
       setUser({
         id: authUser.id,
         email: authUser.email || '',
-        role: userProfile.role || 'user',
-        name: userProfile.name || authUser.user_metadata?.name
+        name: userProfile.name || authUser.user_metadata?.name,
+        userRoles: userRoleData?.map(r => r.role) || []
       });
     } else {
       // Fallback for users without profile
       setUser({
         id: authUser.id,
         email: authUser.email || '',
-        role: 'baskan',
-        name: authUser.user_metadata?.name
+        name: authUser.user_metadata?.name,
+        userRoles: ['baskan'] // Default role for fallback
       });
     }
   };
@@ -108,7 +115,7 @@ const AdminDashboard = () => {
     navigate('/admin');
   };
 
-  const getRolePermissions = (role: string) => {
+  const getRolePermissions = (roles: string[]) => {
     const permissions = {
       baskan: ['news', 'events', 'magazine', 'surveys', 'sponsors', 'team', 'documents', 'internships', 'messages', 'users'],
       baskan_yardimcisi: ['news', 'events', 'magazine', 'surveys', 'sponsors', 'team', 'documents', 'internships', 'messages', 'users'],
@@ -121,15 +128,23 @@ const AdminDashboard = () => {
       dergi_koordinator: ['magazine', 'sponsors'],
       dergi_ekip: ['magazine', 'sponsors']
     };
-    return permissions[role as keyof typeof permissions] || [];
+    
+    // Combine permissions from all user roles
+    const allPermissions = new Set<string>();
+    roles.forEach(role => {
+      const rolePermissions = permissions[role as keyof typeof permissions] || [];
+      rolePermissions.forEach(perm => allPermissions.add(perm));
+    });
+    
+    return Array.from(allPermissions);
   };
 
   const hasPermission = (permission: string) => {
-    if (!user) return false;
-    return getRolePermissions(user.role).includes(permission);
+    if (!user || !user.userRoles) return false;
+    return getRolePermissions(user.userRoles).includes(permission);
   };
 
-  const getRoleLabel = (role: string) => {
+  const getRoleLabel = (roles: string[]) => {
     const roleLabels = {
       baskan: 'Başkan',
       baskan_yardimcisi: 'Başkan Yardımcısı',
@@ -142,7 +157,7 @@ const AdminDashboard = () => {
       dergi_koordinator: 'Dergi Koordinatörü',
       dergi_ekip: 'Dergi Ekip Üyesi'
     };
-    return roleLabels[role as keyof typeof roleLabels] || role;
+    return roles.map(role => roleLabels[role as keyof typeof roleLabels] || role).join(', ');
   };
 
   const handleSaveNews = async (newsData: any) => {
@@ -438,7 +453,7 @@ const AdminDashboard = () => {
                     {user.name || user.email}
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {getRoleLabel(user.role)}
+                    {getRoleLabel(user.userRoles || [])}
                   </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
@@ -454,11 +469,17 @@ const AdminDashboard = () => {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
             {/* Responsive tab list */}
             <div className="overflow-x-auto">
-              <TabsList className="grid w-max grid-flow-col gap-1 md:w-full md:grid-cols-5 lg:grid-cols-10">
+              <TabsList className="grid w-max grid-flow-col gap-1 md:w-full md:grid-cols-5 lg:grid-cols-11">
                 <TabsTrigger value="overview" className="text-xs whitespace-nowrap">
                   <LayoutDashboard className="h-4 w-4 mr-1" />
                   Genel
                 </TabsTrigger>
+                {hasPermission('users') && (
+                  <TabsTrigger value="users" className="text-xs whitespace-nowrap">
+                    <Shield className="h-4 w-4 mr-1" />
+                    Roller
+                  </TabsTrigger>
+                )}
                 {hasPermission('news') && (
                   <TabsTrigger value="news" className="text-xs whitespace-nowrap">
                     <FileText className="h-4 w-4 mr-1" />
@@ -569,6 +590,16 @@ const AdminDashboard = () => {
                 </Card>
               </div>
             </TabsContent>
+
+            {/* Users Tab */}
+            {hasPermission('users') && (
+              <TabsContent value="users" className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-2xl font-bold">Rol Yönetimi</h2>
+                </div>
+                <UserRoleManagement />
+              </TabsContent>
+            )}
 
             {/* News Tab */}
             {hasPermission('news') && (

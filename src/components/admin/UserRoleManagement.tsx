@@ -81,10 +81,10 @@ const UserRoleManagement = () => {
                 <div key={userRole.id} className="flex items-center justify-between p-3 border rounded">
                   <div>
                     <div className="font-medium">
-                      {userRole.users?.name || 'Bilinmeyen Kullanıcı'}
+                      {userRole.user?.name || 'Bilinmeyen Kullanıcı'}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {userRole.users?.email}
+                      {userRole.user?.email}
                     </div>
                     <Badge variant="outline" className="mt-1">
                       {getRoleDisplayName(userRole.role)}
@@ -131,10 +131,10 @@ const UserRoleManagement = () => {
                 <div key={userRole.id} className="flex items-center justify-between p-3 border rounded">
                   <div>
                     <div className="font-medium">
-                      {userRole.users?.name || 'Bilinmeyen Kullanıcı'}
+                      {userRole.user?.name || 'Bilinmeyen Kullanıcı'}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {userRole.users?.email}
+                      {userRole.user?.email}
                     </div>
                     <Badge variant="default" className="mt-1">
                       {getRoleDisplayName(userRole.role)}
