@@ -163,49 +163,6 @@ const EventsSection = () => {
       </div>
     </section>
   );
-
-  function getTypeColor(type: string) {
-    switch (type) {
-      case 'atolye':
-        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200';
-      case 'konferans':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-      case 'sosyal':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
-      case 'egitim':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'seminer':
-        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200';
-      default:
-        return 'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200';
-    }
-  }
-
-  function getTypeLabel(type: string) {
-    const labels: Record<string, string> = {
-      'atolye': 'Atölye',
-      'konferans': 'Konferans',
-      'sosyal': 'Sosyal',
-      'egitim': 'Eğitim',
-      'seminer': 'Seminer'
-    };
-    return labels[type] || type;
-  }
-
-  function formatDate(dateString: string) {
-    return new Date(dateString).toLocaleDateString('tr-TR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  }
-
-  function formatTime(dateString: string) {
-    return new Date(dateString).toLocaleTimeString('tr-TR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
 };
 
 export default EventsSection;

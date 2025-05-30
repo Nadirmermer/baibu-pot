@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,13 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { useNews } from '@/hooks/useSupabaseData';
 
 const NewsSection = () => {
-  const { data: news = [], isLoading } = useNews(true);
+  const { data: news = [], isLoading } = useNews();
   
-  // Sadece öne çıkan 3 haberi göster
-  const featuredNews = news.filter(item => item.featured).slice(0, 3);
-  
-  // Eğer öne çıkan haber yoksa, son 3 haberi al
-  const displayNews = featuredNews.length > 0 ? featuredNews : news.slice(0, 3);
+  // İlk 3 yayınlanmış haberi al (featured property olmadığı için published olanları alıyoruz)
+  const displayNews = news.filter(item => item.published).slice(0, 3);
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -60,7 +58,7 @@ const NewsSection = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white mb-4">
-            Öne Çıkan Haberler ve Duyurular
+            Son Haberler ve Duyurular
           </h2>
           <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
             Topluluk faaliyetleri, akademik gelişmeler ve önemli duyurulardan haberdar olun.
@@ -93,7 +91,7 @@ const NewsSection = () => {
                     {getCategoryLabel(item.category)}
                   </Badge>
                   <span className="text-sm text-slate-500 dark:text-slate-400">
-                    {item.published_at ? formatDate(item.published_at) : formatDate(item.created_at)}
+                    {formatDate(item.created_at)}
                   </span>
                 </div>
                 
