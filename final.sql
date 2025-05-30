@@ -319,6 +319,25 @@ CREATE TABLE public.comments (
 );
 
 -- ====================================================================
+-- SSS VE YARDIM TABLOLARI
+-- ====================================================================
+
+-- FAQ tablosu - SSS sayfası için
+CREATE TABLE public.faqs (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    category TEXT NOT NULL CHECK (category IN ('genel', 'etkinlik', 'dergi', 'staj', 'uyelik', 'teknik')),
+    sort_order INTEGER DEFAULT 0,
+    active BOOLEAN DEFAULT true,
+    view_count INTEGER DEFAULT 0,
+    helpful_count INTEGER DEFAULT 0,
+    created_by UUID REFERENCES public.users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ====================================================================
 -- SİSTEM TABLOLARI
 -- ====================================================================
 
@@ -368,7 +387,7 @@ CREATE INDEX idx_news_slug ON public.news(slug);
 CREATE INDEX idx_events_date ON public.events(event_date);
 CREATE INDEX idx_events_status ON public.events(status);
 CREATE INDEX idx_events_type ON public.events(event_type);
-CREATE INDEX idx_events_featured ON public.events(featured_image);
+CREATE INDEX idx_events_slug ON public.events(slug);
 
 -- Magazine indeksleri
 CREATE INDEX idx_magazine_published ON public.magazine_issues(published);
@@ -410,6 +429,10 @@ CREATE INDEX idx_contact_messages_category ON public.contact_messages(category);
 CREATE INDEX idx_comments_entity ON public.comments(entity_type, entity_id);
 CREATE INDEX idx_comments_approved ON public.comments(approved);
 CREATE INDEX idx_comments_parent ON public.comments(parent_id);
+
+-- FAQ indeksleri
+CREATE INDEX idx_faqs_category ON public.faqs(category);
+CREATE INDEX idx_faqs_active ON public.faqs(active);
 
 -- ====================================================================
 -- SECURITY FUNCTIONS - YETKİ KONTROL FONKSİYONLARI
@@ -531,6 +554,7 @@ CREATE TRIGGER handle_updated_at_academic_documents BEFORE UPDATE ON public.acad
 CREATE TRIGGER handle_updated_at_internships BEFORE UPDATE ON public.internships FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 CREATE TRIGGER handle_updated_at_surveys BEFORE UPDATE ON public.surveys FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 CREATE TRIGGER handle_updated_at_comments BEFORE UPDATE ON public.comments FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+CREATE TRIGGER handle_updated_at_faqs BEFORE UPDATE ON public.faqs FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
 
 -- ====================================================================
 -- ROW LEVEL SECURITY (RLS) POLİTİKALARI
@@ -553,6 +577,7 @@ ALTER TABLE public.form_fields ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.form_responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.file_uploads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.faqs ENABLE ROW LEVEL SECURITY;
 
 -- ====================================================================
 -- USERS TABLOSU POLİTİKALARI
@@ -730,6 +755,13 @@ FOR INSERT WITH CHECK (true);
 CREATE POLICY "Kullanıcılar kendi bildirimlerini güncelleyebilir" ON public.notifications
 FOR UPDATE USING (auth.uid() = user_id);
 
+-- FAQs
+CREATE POLICY "Herkes aktif SSS'leri görebilir" ON public.faqs
+FOR SELECT USING (active = true);
+
+CREATE POLICY "İçerik yöneticileri SSS yönetebilir" ON public.faqs
+FOR ALL USING (public.can_manage_content());
+
 -- ====================================================================
 -- ÖRNEK VERİLER - TEST İÇİN
 -- ====================================================================
@@ -743,10 +775,31 @@ INSERT INTO public.user_roles (user_id, role, is_approved, approved_at)
 VALUES ('550e8400-e29b-41d4-a716-446655440000', 'baskan', true, NOW())
 ON CONFLICT (user_id, role) DO NOTHING;
 
+-- Örnek haberler
+INSERT INTO public.news (title, excerpt, content, category, slug, published, featured, published_at) VALUES
+('Psikoloji Günleri 2024 Başlıyor', 'Bu yıl 15-17 Mart tarihleri arasında düzenlenecek Psikoloji Günleri etkinlik programı açıklandı.', 'Detaylı içerik...', 'etkinlik', 'psikoloji-gunleri-2024', true, true, NOW()),
+('Yeni Dergi Sayımız Yayında', 'Psikolojiİbu dergisinin 12. sayısı "Travma ve İyileşme" temasıyla okuyucularla buluştu.', 'Detaylı içerik...', 'dergi', 'yeni-dergi-sayimiz', true, true, NOW()),
+('Staj Başvuruları Başladı', '2024 yaz dönemi staj başvuruları için yeni fırsatlar ve rehber bilgileri paylaşıldı.', 'Detaylı içerik...', 'duyuru', 'staj-basvurulari', true, false, NOW());
+
+-- Örnek etkinlikler
+INSERT INTO public.events (title, description, event_date, location, event_type, max_participants, registration_required, slug, status) VALUES
+('Mindfulness ve Stres Yönetimi Atölyesi', 'Günlük yaşamda stres yönetimi teknikleri', '2024-04-25 14:00:00+03', 'Psikoloji Bölümü Konferans Salonu', 'atolye', 20, true, 'mindfulness-atolyesi', 'upcoming'),
+('Psikoloji Kariyer Günleri', 'Psikoloji alanında kariyer fırsatları', '2024-04-02 09:00:00+03', 'Rektörlük Konferans Salonu', 'konferans', 150, true, 'kariyer-gunleri', 'upcoming'),
+('Kitap Kulübü Buluşması', 'Aylık kitap tartışması', '2024-04-10 18:30:00+03', 'Kütüphane Toplantı Salonu', 'sosyal', 15, false, 'kitap-kulubu', 'upcoming');
+
+-- Örnek dergi sayısı
+INSERT INTO public.magazine_issues (issue_number, title, theme, description, publication_date, slug, published, featured) VALUES
+(12, 'Travma ve İyileşme', 'Post-travmatik Stres Bozukluğu', 'Travma ve iyileşme süreçleri üzerine akademik çalışmalar', '2024-03-01', 'sayi-12-travma', true, true);
+
 -- Örnek sponsor
 INSERT INTO public.sponsors (name, logo, website, sponsor_type, active, sort_order) VALUES
-('Bolu Abant İzzet Baysal Üniversitesi', '/logo.png', 'https://baibu.edu.tr', 'akademik', true, 1)
-ON CONFLICT DO NOTHING;
+('Bolu Abant İzzet Baysal Üniversitesi', '/logo.png', 'https://baibu.edu.tr', 'akademik', true, 1);
+
+-- Örnek SSS
+INSERT INTO public.faqs (question, answer, category, sort_order, active) VALUES
+('BAİBÜ Psikoloji Öğrencileri Topluluğu nedir?', 'Bolu Abant İzzet Baysal Üniversitesi Psikoloji Bölümü öğrencilerinin oluşturduğu akademik ve sosyal bir topluluktur.', 'genel', 1, true),
+('Topluluğa nasıl üye olabilirim?', 'Psikoloji Bölümü öğrencisi olmak koşuluyla topluluğumuza üye olabilirsiniz.', 'uyelik', 1, true),
+('Etkinliklere nasıl kayıt olabilirim?', 'Etkinlikler sayfamızdan güncel etkinliklerimizi görebilir ve kayıt olabilirsiniz.', 'etkinlik', 1, true);
 
 -- ====================================================================
 -- FİNAL KONTROLLER
@@ -791,6 +844,7 @@ ORDER BY routine_name;
 -- ✅ Rol sistemi düzgün çalışacak
 -- ✅ Form builder sistemi aktif olacak
 -- ✅ Tüm sayfalarda RLS koruması olacak
+-- ✅ SSS sayfası tam çalışacak
 -- 
 -- İlk giriş için:
 -- Email: admin@baibu.edu.tr (manuel kayıt yapın)

@@ -2,8 +2,33 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useMagazineIssues } from '@/hooks/useSupabaseData';
 
 const MagazineSection = () => {
+  const { data: magazines = [], isLoading } = useMagazineIssues(true);
+  
+  // En son yayınlanan dergiyi al
+  const latestMagazine = magazines
+    .filter(mag => mag.published)
+    .sort((a, b) => new Date(b.publication_date).getTime() - new Date(a.publication_date).getTime())[0];
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('tr-TR', {
+      year: 'numeric',
+      month: 'long'
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <section className="py-16 bg-white dark:bg-slate-800 transition-colors duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">Dergi bilgileri yükleniyor...</div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="py-16 bg-white dark:bg-slate-800 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -12,29 +37,52 @@ const MagazineSection = () => {
           <div className="relative">
             <div className="relative z-10 bg-gradient-to-br from-cyan-50 to-teal-50 dark:from-slate-700 dark:to-slate-800 rounded-2xl p-8 shadow-xl">
               <div className="aspect-[3/4] bg-white dark:bg-slate-900 rounded-lg shadow-lg overflow-hidden">
-                <div className="h-full flex flex-col">
-                  {/* Dergi kapağı header */}
-                  <div className="bg-gradient-to-r from-cyan-600 to-teal-600 p-4 text-white">
-                    <h3 className="text-xl font-bold">Psikolojiİbu</h3>
-                    <p className="text-sm opacity-90">Psikoloji Öğrencileri Dergisi</p>
-                  </div>
-                  
-                  {/* Dergi kapağı içerik */}
-                  <div className="flex-1 p-6 flex flex-col justify-center items-center text-center">
-                    <div className="w-16 h-16 flex items-center justify-center mb-4">
-                      <span className="text-xl font-bold text-slate-900 dark:text-white">12</span>
+                {latestMagazine ? (
+                  <div className="h-full flex flex-col">
+                    {/* Dergi kapağı header */}
+                    <div className="bg-gradient-to-r from-cyan-600 to-teal-600 p-4 text-white">
+                      <h3 className="text-xl font-bold">Psikolojiİbu</h3>
+                      <p className="text-sm opacity-90">Psikoloji Öğrencileri Dergisi</p>
                     </div>
-                    <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                      Travma ve İyileşme
-                    </h4>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                      Özel Dosya: Post-travmatik Stres Bozukluğu
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-500">
-                      Mart 2024 • Sayı 12
-                    </p>
+                    
+                    {/* Dergi kapağı görseli */}
+                    {latestMagazine.cover_image ? (
+                      <div className="flex-1">
+                        <img 
+                          src={latestMagazine.cover_image} 
+                          alt={latestMagazine.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex-1 p-6 flex flex-col justify-center items-center text-center">
+                        <div className="w-16 h-16 flex items-center justify-center mb-4">
+                          <span className="text-xl font-bold text-slate-900 dark:text-white">
+                            {latestMagazine.issue_number}
+                          </span>
+                        </div>
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+                          {latestMagazine.title}
+                        </h4>
+                        {latestMagazine.theme && (
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                            {latestMagazine.theme}
+                          </p>
+                        )}
+                        <p className="text-xs text-slate-500 dark:text-slate-500">
+                          {formatDate(latestMagazine.publication_date)} • Sayı {latestMagazine.issue_number}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                </div>
+                ) : (
+                  <div className="h-full flex flex-col justify-center items-center text-center p-6">
+                    <div className="text-slate-400">
+                      <div className="w-16 h-16 bg-slate-200 dark:bg-slate-700 rounded-lg mx-auto mb-4"></div>
+                      <p>Henüz dergi sayısı yayınlanmamış</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -76,7 +124,7 @@ const MagazineSection = () => {
             <div className="flex flex-col sm:flex-row gap-4">
               <Button asChild size="lg" className="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white">
                 <Link to="/dergi">
-                  Son Sayıyı Keşfet
+                  {latestMagazine ? 'Son Sayıyı Keşfet' : 'Dergi Arşivini İncele'}
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
@@ -90,15 +138,21 @@ const MagazineSection = () => {
             <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700">
               <div className="grid grid-cols-3 gap-6">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-slate-900 dark:text-white">12</div>
+                  <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                    {magazines.length}
+                  </div>
                   <div className="text-sm text-slate-600 dark:text-slate-400">Yayınlanan Sayı</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-slate-900 dark:text-white">45+</div>
-                  <div className="text-sm text-slate-600 dark:text-slate-400">Makale</div>
+                  <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                    {magazines.reduce((sum, mag) => sum + (mag.download_count || 0), 0)}
+                  </div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400">İndirme</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-slate-900 dark:text-white">25+</div>
+                  <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                    {magazines.reduce((sum, mag) => sum + (mag.contributors?.length || 0), 0)}
+                  </div>
                   <div className="text-sm text-slate-600 dark:text-slate-400">Yazar</div>
                 </div>
               </div>

@@ -4,47 +4,57 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useNews } from '@/hooks/useSupabaseData';
 
 const NewsSection = () => {
-  const news = [
-    {
-      id: 1,
-      title: "Psikoloji Günleri 2024 Başlıyor",
-      excerpt: "Bu yıl 15-17 Mart tarihleri arasında düzenlenecek Psikoloji Günleri etkinlik programı açıklandı.",
-      date: "15 Mart 2024",
-      category: "Etkinlik",
-      image: "/api/placeholder/400/200"
-    },
-    {
-      id: 2,
-      title: "Yeni Dergi Sayımız Yayında",
-      excerpt: "Psikolojiİbu dergisinin 12. sayısı 'Travma ve İyileşme' temasıyla okuyucularla buluştu.",
-      date: "10 Mart 2024",
-      category: "Dergi",
-      image: "/api/placeholder/400/200"
-    },
-    {
-      id: 3,
-      title: "Staj Başvuruları Başladı",
-      excerpt: "2024 yaz dönemi staj başvuruları için yeni fırsatlar ve rehber bilgileri paylaşıldı.",
-      date: "8 Mart 2024",
-      category: "Duyuru",
-      image: "/api/placeholder/400/200"
-    }
-  ];
+  const { data: news = [], isLoading } = useNews(true);
+  
+  // Sadece öne çıkan 3 haberi göster
+  const featuredNews = news.filter(item => item.featured).slice(0, 3);
+  
+  // Eğer öne çıkan haber yoksa, son 3 haberi al
+  const displayNews = featuredNews.length > 0 ? featuredNews : news.slice(0, 3);
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'Etkinlik':
+      case 'etkinlik':
         return 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200';
-      case 'Dergi':
+      case 'dergi':
         return 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200';
-      case 'Duyuru':
+      case 'duyuru':
         return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200';
       default:
         return 'bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200';
     }
   };
+
+  const getCategoryLabel = (category: string) => {
+    const labels: Record<string, string> = {
+      'etkinlik': 'Etkinlik',
+      'dergi': 'Dergi',
+      'duyuru': 'Duyuru',
+      'genel': 'Genel'
+    };
+    return labels[category] || category;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('tr-TR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <section className="py-16 bg-white dark:bg-slate-800 transition-colors duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">Haberler yükleniyor...</div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-16 bg-white dark:bg-slate-800 transition-colors duration-300">
@@ -59,24 +69,32 @@ const NewsSection = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          {news.map((item) => (
+          {displayNews.map((item) => (
             <Card key={item.id} className="group hover:shadow-lg transition-all duration-300 border-0 shadow-md bg-white dark:bg-slate-900">
               <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 rounded-t-lg overflow-hidden">
-                <div className="w-full h-full flex items-center justify-center text-slate-500 dark:text-slate-400">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-slate-300 dark:bg-slate-600 rounded-lg mx-auto mb-2"></div>
-                    <span className="text-sm">Görsel</span>
+                {item.featured_image ? (
+                  <img 
+                    src={item.featured_image} 
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-500 dark:text-slate-400">
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-slate-300 dark:bg-slate-600 rounded-lg mx-auto mb-2"></div>
+                      <span className="text-sm">Görsel</span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
               
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-3">
                   <Badge className={getCategoryColor(item.category)}>
-                    {item.category}
+                    {getCategoryLabel(item.category)}
                   </Badge>
                   <span className="text-sm text-slate-500 dark:text-slate-400">
-                    {item.date}
+                    {item.published_at ? formatDate(item.published_at) : formatDate(item.created_at)}
                   </span>
                 </div>
                 
@@ -90,8 +108,15 @@ const NewsSection = () => {
               </CardContent>
               
               <CardFooter className="px-6 pb-6">
-                <Button variant="outline" size="sm" className="w-full group-hover:bg-cyan-50 dark:group-hover:bg-cyan-900/20 group-hover:border-cyan-200 dark:group-hover:border-cyan-800">
-                  Devamını Oku
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full group-hover:bg-cyan-50 dark:group-hover:bg-cyan-900/20 group-hover:border-cyan-200 dark:group-hover:border-cyan-800"
+                  asChild
+                >
+                  <Link to={`/haberler/${item.slug}`}>
+                    Devamını Oku
+                  </Link>
                 </Button>
               </CardFooter>
             </Card>
