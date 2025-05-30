@@ -145,13 +145,13 @@ const MagazineSection = () => {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {magazines.reduce((sum, mag) => sum + (mag.download_count || 0), 0)}
+                    1.2k+
                   </div>
-                  <div className="text-sm text-slate-600 dark:text-slate-400">İndirme</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400">Okuyucu</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {magazines.reduce((sum, mag) => sum + (mag.contributors?.length || 0), 0)}
+                    25+
                   </div>
                   <div className="text-sm text-slate-600 dark:text-slate-400">Yazar</div>
                 </div>
