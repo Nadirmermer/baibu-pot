@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,9 +7,9 @@ import { ArrowLeft, Book, Download, Eye, Calendar, User, Users, Heart } from 'lu
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import FlipbookReader from '@/components/FlipbookReader';
 import LazyPdfReader from '@/components/LazyPdfReader';
 import { useMagazineIssues } from '@/hooks/useSupabaseData';
+import { useMagazineReads } from '@/hooks/useMagazineReads';
 
 const DergiDetay = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,6 +35,8 @@ const DergiDetay = () => {
 
   const allMagazines = [mockPdfDemo, ...magazines];
   const magazineDetail = allMagazines.find(mag => mag.slug === id || mag.id === id);
+  
+  const { readCount, incrementReadCount } = useMagazineReads(magazineDetail?.id || '');
 
   if (isLoading) {
     return (
@@ -81,6 +82,11 @@ const DergiDetay = () => {
       year: 'numeric',
       month: 'long'
     });
+  };
+
+  const handleReadMagazine = () => {
+    incrementReadCount();
+    setShowReader(true);
   };
 
   // Tam ekran dergi okuyucu - PDF lazy loading ile
@@ -142,6 +148,11 @@ const DergiDetay = () => {
                     ⭐ Demo
                   </Badge>
                 )}
+                {readCount > 0 && (
+                  <Badge variant="outline" className="border-blue-300 text-blue-600 dark:text-blue-400">
+                    👁️ {readCount} okunma
+                  </Badge>
+                )}
               </div>
 
               <h1 className="text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white leading-tight">
@@ -166,7 +177,7 @@ const DergiDetay = () => {
 
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <Button 
-                  onClick={() => setShowReader(true)}
+                  onClick={handleReadMagazine}
                   size="lg" 
                   className="flex items-center gap-3 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white px-8 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
                   disabled={!magazineDetail.pdf_file}
@@ -211,6 +222,11 @@ const DergiDetay = () => {
                   {magazineDetail.theme && (
                     <p className="text-slate-700 dark:text-slate-300">
                       <span className="font-medium">Tema:</span> {magazineDetail.theme}
+                    </p>
+                  )}
+                  {readCount > 0 && (
+                    <p className="text-slate-700 dark:text-slate-300">
+                      <span className="font-medium">Okunma:</span> {readCount} kez
                     </p>
                   )}
                 </div>

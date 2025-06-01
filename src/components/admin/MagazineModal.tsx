@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Upload, FileText } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Upload, FileText, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface MagazineModalProps {
   isOpen: boolean;
@@ -32,52 +34,96 @@ const MagazineModal = ({ isOpen, onClose, onSave, initialData }: MagazineModalPr
   const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
   const [selectedCoverFile, setSelectedCoverFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const [error, setError] = useState('');
 
-  const uploadFile = async (file: File, bucket: string, path: string) => {
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(path, file, {
-        cacheControl: '3600',
-        upsert: true
+  const uploadFile = async (file: File, path: string) => {
+    try {
+      setUploadStatus(`${file.type.includes('pdf') ? 'PDF' : 'Kapak görseli'} yükleniyor...`);
+      
+      // First, try to create the bucket if it doesn't exist
+      const { error: bucketError } = await supabase.storage.createBucket('magazines', {
+        public: true,
+        allowedMimeTypes: ['application/pdf', 'image/*']
       });
-    
-    if (error) throw error;
-    
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(path);
-    
-    return publicUrl;
+      
+      // Ignore error if bucket already exists
+      if (bucketError && !bucketError.message.includes('already exists')) {
+        console.log('Bucket creation info:', bucketError.message);
+      }
+
+      // Upload the file
+      const { data, error } = await supabase.storage
+        .from('magazines')
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+      
+      if (error) throw error;
+      
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('magazines')
+        .getPublicUrl(path);
+      
+      return publicUrl;
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUploading(true);
+    setUploadProgress(0);
+    setError('');
+    setUploadStatus('Hazırlanıyor...');
     
     try {
       let finalFormData = { ...formData };
+      let progress = 0;
       
       // PDF dosyası yükle
       if (selectedPdfFile) {
-        const pdfPath = `magazines/pdf/${Date.now()}_${selectedPdfFile.name}`;
-        const pdfUrl = await uploadFile(selectedPdfFile, 'magazines', pdfPath);
+        setUploadProgress(25);
+        const pdfPath = `pdf/${Date.now()}_${selectedPdfFile.name}`;
+        const pdfUrl = await uploadFile(selectedPdfFile, pdfPath);
         finalFormData.pdf_file = pdfUrl;
+        progress = 50;
+        setUploadProgress(progress);
       }
       
       // Kapak görseli yükle
       if (selectedCoverFile) {
-        const coverPath = `magazines/covers/${Date.now()}_${selectedCoverFile.name}`;
-        const coverUrl = await uploadFile(selectedCoverFile, 'magazines', coverPath);
+        setUploadProgress(75);
+        const coverPath = `covers/${Date.now()}_${selectedCoverFile.name}`;
+        const coverUrl = await uploadFile(selectedCoverFile, coverPath);
         finalFormData.cover_image = coverUrl;
+        progress = 90;
+        setUploadProgress(progress);
       }
       
-      onSave(finalFormData);
+      setUploadStatus('Dergi kaydediliyor...');
+      setUploadProgress(95);
+      
+      await onSave(finalFormData);
+      
+      setUploadProgress(100);
+      setUploadStatus('Başarıyla kaydedildi!');
+      
+      toast.success('Dergi başarıyla kaydedildi!');
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
-      alert('Dosya yükleme sırasında hata oluştu: ' + error.message);
+      setError(error.message || 'Dosya yükleme sırasında hata oluştu');
+      toast.error('Hata: ' + (error.message || 'Dosya yükleme sırasında hata oluştu'));
     } finally {
       setUploading(false);
+      setUploadProgress(0);
+      setUploadStatus('');
     }
   };
 
@@ -100,8 +146,9 @@ const MagazineModal = ({ isOpen, onClose, onSave, initialData }: MagazineModalPr
     const file = e.target.files?.[0];
     if (file && file.type === 'application/pdf') {
       setSelectedPdfFile(file);
+      setError('');
     } else {
-      alert('Lütfen sadece PDF dosyası seçin.');
+      setError('Lütfen sadece PDF dosyası seçin.');
     }
   };
 
@@ -109,8 +156,9 @@ const MagazineModal = ({ isOpen, onClose, onSave, initialData }: MagazineModalPr
     const file = e.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
       setSelectedCoverFile(file);
+      setError('');
     } else {
-      alert('Lütfen sadece görsel dosyası seçin.');
+      setError('Lütfen sadece görsel dosyası seçin.');
     }
   };
 
@@ -124,6 +172,13 @@ const MagazineModal = ({ isOpen, onClose, onSave, initialData }: MagazineModalPr
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-700">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-sm">{error}</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="issue_number">Sayı Numarası</Label>
@@ -255,8 +310,18 @@ const MagazineModal = ({ isOpen, onClose, onSave, initialData }: MagazineModalPr
             <Label htmlFor="published">Yayınla</Label>
           </div>
 
+          {uploading && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>{uploadStatus}</span>
+                <span>%{uploadProgress}</span>
+              </div>
+              <Progress value={uploadProgress} className="w-full" />
+            </div>
+          )}
+
           <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} disabled={uploading}>
               İptal
             </Button>
             <Button type="submit" disabled={uploading}>
