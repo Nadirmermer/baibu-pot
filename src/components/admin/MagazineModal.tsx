@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Upload, FileText } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MagazineModalProps {
   isOpen: boolean;
@@ -30,27 +31,54 @@ const MagazineModal = ({ isOpen, onClose, onSave, initialData }: MagazineModalPr
   
   const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
   const [selectedCoverFile, setSelectedCoverFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const uploadFile = async (file: File, bucket: string, path: string) => {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(path, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+    
+    if (error) throw error;
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(path);
+    
+    return publicUrl;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUploading(true);
     
-    let finalFormData = { ...formData };
-    
-    // Eğer yeni PDF dosyası seçildiyse
-    if (selectedPdfFile) {
-      // Gerçek uygulamada burada Supabase storage'a upload edilecek
-      // Şimdilik dosya adını kullanıyoruz
-      finalFormData.pdf_file = `pdfs/${selectedPdfFile.name}`;
+    try {
+      let finalFormData = { ...formData };
+      
+      // PDF dosyası yükle
+      if (selectedPdfFile) {
+        const pdfPath = `magazines/pdf/${Date.now()}_${selectedPdfFile.name}`;
+        const pdfUrl = await uploadFile(selectedPdfFile, 'magazines', pdfPath);
+        finalFormData.pdf_file = pdfUrl;
+      }
+      
+      // Kapak görseli yükle
+      if (selectedCoverFile) {
+        const coverPath = `magazines/covers/${Date.now()}_${selectedCoverFile.name}`;
+        const coverUrl = await uploadFile(selectedCoverFile, 'magazines', coverPath);
+        finalFormData.cover_image = coverUrl;
+      }
+      
+      onSave(finalFormData);
+      onClose();
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Dosya yükleme sırasında hata oluştu: ' + error.message);
+    } finally {
+      setUploading(false);
     }
-    
-    // Eğer yeni kapak görseli seçildiyse
-    if (selectedCoverFile) {
-      // Gerçek uygulamada burada Supabase storage'a upload edilecek
-      finalFormData.cover_image = `covers/${selectedCoverFile.name}`;
-    }
-    
-    onSave(finalFormData);
-    onClose();
   };
 
   const generateSlug = (title: string) => {
@@ -231,8 +259,8 @@ const MagazineModal = ({ isOpen, onClose, onSave, initialData }: MagazineModalPr
             <Button type="button" variant="outline" onClick={onClose}>
               İptal
             </Button>
-            <Button type="submit">
-              {initialData ? 'Güncelle' : 'Kaydet'}
+            <Button type="submit" disabled={uploading}>
+              {uploading ? 'Yükleniyor...' : (initialData ? 'Güncelle' : 'Kaydet')}
             </Button>
           </div>
         </form>
