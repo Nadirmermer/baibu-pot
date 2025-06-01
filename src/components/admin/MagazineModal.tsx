@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Upload, FileText } from 'lucide-react';
 
 interface MagazineModalProps {
   isOpen: boolean;
@@ -26,10 +27,29 @@ const MagazineModal = ({ isOpen, onClose, onSave, initialData }: MagazineModalPr
     slug: initialData?.slug || '',
     published: initialData?.published || false,
   });
+  
+  const [selectedPdfFile, setSelectedPdfFile] = useState<File | null>(null);
+  const [selectedCoverFile, setSelectedCoverFile] = useState<File | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    let finalFormData = { ...formData };
+    
+    // Eğer yeni PDF dosyası seçildiyse
+    if (selectedPdfFile) {
+      // Gerçek uygulamada burada Supabase storage'a upload edilecek
+      // Şimdilik dosya adını kullanıyoruz
+      finalFormData.pdf_file = `pdfs/${selectedPdfFile.name}`;
+    }
+    
+    // Eğer yeni kapak görseli seçildiyse
+    if (selectedCoverFile) {
+      // Gerçek uygulamada burada Supabase storage'a upload edilecek
+      finalFormData.cover_image = `covers/${selectedCoverFile.name}`;
+    }
+    
+    onSave(finalFormData);
     onClose();
   };
 
@@ -46,6 +66,24 @@ const MagazineModal = ({ isOpen, onClose, onSave, initialData }: MagazineModalPr
       title,
       slug: generateSlug(title)
     }));
+  };
+
+  const handlePdfFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedPdfFile(file);
+    } else {
+      alert('Lütfen sadece PDF dosyası seçin.');
+    }
+  };
+
+  const handleCoverFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setSelectedCoverFile(file);
+    } else {
+      alert('Lütfen sadece görsel dosyası seçin.');
+    }
   };
 
   return (
@@ -111,23 +149,73 @@ const MagazineModal = ({ isOpen, onClose, onSave, initialData }: MagazineModalPr
           </div>
 
           <div>
-            <Label htmlFor="cover_image">Kapak Görseli URL</Label>
-            <Input
-              id="cover_image"
-              value={formData.cover_image}
-              onChange={(e) => setFormData(prev => ({ ...prev, cover_image: e.target.value }))}
-              placeholder="https://example.com/cover.jpg"
-            />
+            <Label htmlFor="cover_image">Kapak Görseli</Label>
+            <div className="space-y-2">
+              <Input
+                id="cover_image"
+                value={formData.cover_image}
+                onChange={(e) => setFormData(prev => ({ ...prev, cover_image: e.target.value }))}
+                placeholder="https://example.com/cover.jpg veya dosya yükleyin"
+              />
+              <div className="flex items-center space-x-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverFileChange}
+                  className="hidden"
+                  id="cover-file-input"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => document.getElementById('cover-file-input')?.click()}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Kapak Yükle
+                </Button>
+                {selectedCoverFile && (
+                  <span className="text-sm text-green-600">
+                    {selectedCoverFile.name} seçildi
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
 
           <div>
-            <Label htmlFor="pdf_file">PDF Dosyası URL</Label>
-            <Input
-              id="pdf_file"
-              value={formData.pdf_file}
-              onChange={(e) => setFormData(prev => ({ ...prev, pdf_file: e.target.value }))}
-              placeholder="https://example.com/magazine.pdf"
-            />
+            <Label htmlFor="pdf_file">PDF Dosyası</Label>
+            <div className="space-y-2">
+              <Input
+                id="pdf_file"
+                value={formData.pdf_file}
+                onChange={(e) => setFormData(prev => ({ ...prev, pdf_file: e.target.value }))}
+                placeholder="https://example.com/magazine.pdf veya dosya yükleyin"
+              />
+              <div className="flex items-center space-x-2">
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={handlePdfFileChange}
+                  className="hidden"
+                  id="pdf-file-input"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => document.getElementById('pdf-file-input')?.click()}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF Yükle
+                </Button>
+                {selectedPdfFile && (
+                  <span className="text-sm text-green-600">
+                    {selectedPdfFile.name} seçildi
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center space-x-2">

@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash2, Plus, MoveUp, MoveDown } from 'lucide-react';
-import { useCreateFormField, useFormFields } from '@/hooks/useSupabaseData';
+import { Trash2, Plus, MoveUp, MoveDown, Download, Users } from 'lucide-react';
+import { useCreateFormField, useFormFields, useFormResponses } from '@/hooks/useSupabaseData';
+import { exportToExcel, formatFormResponsesForExcel } from '@/utils/excelExport';
 import { toast } from 'sonner';
 
 interface FormField {
@@ -24,9 +25,10 @@ interface FormBuilderProps {
   formId: string;
   formType: 'event_registration' | 'survey';
   onSave?: () => void;
+  formTitle?: string;
 }
 
-const FormBuilder = ({ formId, formType, onSave }: FormBuilderProps) => {
+const FormBuilder = ({ formId, formType, onSave, formTitle }: FormBuilderProps) => {
   const [fields, setFields] = useState<FormField[]>([]);
   const [newField, setNewField] = useState<FormField>({
     field_type: 'text',
@@ -39,6 +41,7 @@ const FormBuilder = ({ formId, formType, onSave }: FormBuilderProps) => {
   const [options, setOptions] = useState('');
 
   const { data: existingFields } = useFormFields(formId, formType);
+  const { data: formResponses = [] } = useFormResponses(formId, formType);
   const createFormField = useCreateFormField();
 
   React.useEffect(() => {
@@ -120,8 +123,55 @@ const FormBuilder = ({ formId, formType, onSave }: FormBuilderProps) => {
     }
   };
 
+  const exportResponses = () => {
+    if (formResponses.length === 0) {
+      toast.error('Dışa aktarılacak yanıt bulunamadı');
+      return;
+    }
+
+    const formattedData = formatFormResponsesForExcel(formResponses);
+    const filename = `${formTitle || formType}_yanitlari_${new Date().toLocaleDateString('tr-TR')}`;
+    exportToExcel(formattedData, filename);
+    toast.success('Yanıtlar Excel dosyası olarak indirildi');
+  };
+
   return (
     <div className="space-y-6">
+      {/* Form Responses Section */}
+      {existingFields && existingFields.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center">
+                <Users className="mr-2 h-5 w-5" />
+                Form Yanıtları ({formResponses.length})
+              </span>
+              <Button
+                onClick={exportResponses}
+                variant="outline"
+                size="sm"
+                disabled={formResponses.length === 0}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Excel'e Aktar
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {formResponses.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">
+                Henüz yanıt bulunmuyor
+              </p>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                Son yanıt: {new Date(formResponses[0]?.submitted_at).toLocaleDateString('tr-TR')}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Form Builder Section */}
       <Card>
         <CardHeader>
           <CardTitle>Yeni Alan Ekle</CardTitle>
@@ -138,10 +188,13 @@ const FormBuilder = ({ formId, formType, onSave }: FormBuilderProps) => {
                   <SelectItem value="text">Metin</SelectItem>
                   <SelectItem value="email">E-posta</SelectItem>
                   <SelectItem value="number">Sayı</SelectItem>
+                  <SelectItem value="tel">Telefon</SelectItem>
                   <SelectItem value="textarea">Uzun Metin</SelectItem>
                   <SelectItem value="select">Seçim Listesi</SelectItem>
                   <SelectItem value="radio">Tekli Seçim</SelectItem>
                   <SelectItem value="checkbox">Çoklu Seçim</SelectItem>
+                  <SelectItem value="file">Dosya Yükleme</SelectItem>
+                  <SelectItem value="date">Tarih</SelectItem>
                 </SelectContent>
               </Select>
             </div>

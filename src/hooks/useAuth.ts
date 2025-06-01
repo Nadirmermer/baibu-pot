@@ -6,9 +6,15 @@ export const useAuth = () => {
   return useQuery({
     queryKey: ['auth-user'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error('Auth error:', error);
+        return null;
+      }
       return user;
     },
+    retry: 1,
+    staleTime: 1000 * 60 * 5, // 5 dakika
   });
 };
 
@@ -40,7 +46,7 @@ export const useUserRoles = (userId?: string) => {
 
 export const useIsAdmin = (userId?: string) => {
   const { data: roles = [] } = useUserRoles(userId);
-  const isAdmin = roles.includes('baskan') || roles.includes('baskan_yardimcisi');
+  const isAdmin = roles.includes('baskan') || roles.includes('baskan_yardimcisi') || roles.includes('teknik_koordinator');
   
   console.log('Is admin check:', { userId, roles, isAdmin });
   
