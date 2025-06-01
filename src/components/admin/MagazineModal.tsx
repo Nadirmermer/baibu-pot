@@ -42,30 +42,39 @@ const MagazineModal = ({ isOpen, onClose, onSave, initialData }: MagazineModalPr
     try {
       setUploadStatus(`${file.type.includes('pdf') ? 'PDF' : 'Kapak görseli'} yükleniyor...`);
       
-      // First, try to create the bucket if it doesn't exist
-      const { error: bucketError } = await supabase.storage.createBucket('magazines', {
-        public: true,
-        allowedMimeTypes: ['application/pdf', 'image/*']
-      });
+      // Check if bucket exists, if not create it
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const bucketExists = buckets?.some(bucket => bucket.name === 'magazine-files');
       
-      // Ignore error if bucket already exists
-      if (bucketError && !bucketError.message.includes('already exists')) {
-        console.log('Bucket creation info:', bucketError.message);
+      if (!bucketExists) {
+        const { error: bucketError } = await supabase.storage.createBucket('magazine-files', {
+          public: true,
+          allowedMimeTypes: ['application/pdf', 'image/*'],
+          fileSizeLimit: 52428800 // 50MB
+        });
+        
+        if (bucketError) {
+          console.error('Bucket creation error:', bucketError);
+          throw new Error('Dosya yükleme alanı oluşturulamadı');
+        }
       }
 
-      // Upload the file
+      // Upload the file with correct path
       const { data, error } = await supabase.storage
-        .from('magazines')
+        .from('magazine-files')
         .upload(path, file, {
           cacheControl: '3600',
           upsert: true
         });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Upload error:', error);
+        throw new Error(`Dosya yükleme hatası: ${error.message}`);
+      }
       
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
-        .from('magazines')
+        .from('magazine-files')
         .getPublicUrl(path);
       
       return publicUrl;
@@ -84,26 +93,23 @@ const MagazineModal = ({ isOpen, onClose, onSave, initialData }: MagazineModalPr
     
     try {
       let finalFormData = { ...formData };
-      let progress = 0;
       
       // PDF dosyası yükle
       if (selectedPdfFile) {
         setUploadProgress(25);
-        const pdfPath = `pdf/${Date.now()}_${selectedPdfFile.name}`;
+        const pdfPath = `pdf/${Date.now()}_${selectedPdfFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
         const pdfUrl = await uploadFile(selectedPdfFile, pdfPath);
         finalFormData.pdf_file = pdfUrl;
-        progress = 50;
-        setUploadProgress(progress);
+        setUploadProgress(50);
       }
       
       // Kapak görseli yükle
       if (selectedCoverFile) {
         setUploadProgress(75);
-        const coverPath = `covers/${Date.now()}_${selectedCoverFile.name}`;
+        const coverPath = `covers/${Date.now()}_${selectedCoverFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
         const coverUrl = await uploadFile(selectedCoverFile, coverPath);
         finalFormData.cover_image = coverUrl;
-        progress = 90;
-        setUploadProgress(progress);
+        setUploadProgress(90);
       }
       
       setUploadStatus('Dergi kaydediliyor...');
@@ -118,8 +124,9 @@ const MagazineModal = ({ isOpen, onClose, onSave, initialData }: MagazineModalPr
       onClose();
     } catch (error: any) {
       console.error('Upload error:', error);
-      setError(error.message || 'Dosya yükleme sırasında hata oluştu');
-      toast.error('Hata: ' + (error.message || 'Dosya yükleme sırasında hata oluştu'));
+      const errorMessage = error.message || 'Dosya yükleme sırasında hata oluştu';
+      setError(errorMessage);
+      toast.error('Hata: ' + errorMessage);
     } finally {
       setUploading(false);
       setUploadProgress(0);

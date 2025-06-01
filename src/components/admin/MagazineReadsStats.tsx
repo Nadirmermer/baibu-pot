@@ -27,7 +27,7 @@ const MagazineReadsStats = () => {
     );
   }
 
-  const totalReads = reads.reduce((sum, read) => sum + read.read_count, 0);
+  const totalReads = reads.reduce((sum, read) => sum + (read.read_count || 0), 0);
   const averageReads = reads.length > 0 ? Math.round(totalReads / reads.length) : 0;
 
   return (
@@ -79,17 +79,17 @@ const MagazineReadsStats = () => {
           ) : (
             <div className="space-y-3">
               {reads.map((read) => (
-                <div key={read.magazine_id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div key={read.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <div className="flex-1">
                     <div className="font-medium text-slate-900 dark:text-white">
-                      {read.magazine_issues?.title || 'Bilinmeyen Dergi'}
+                      {read.title || 'Bilinmeyen Dergi'}
                     </div>
                     <div className="text-sm text-slate-600 dark:text-slate-400">
-                      Sayı {read.magazine_issues?.issue_number || 'N/A'}
+                      Sayı {read.issue_number || 'N/A'}
                     </div>
-                    {read.last_read_at && (
+                    {read.updated_at && (
                       <div className="text-xs text-slate-500 dark:text-slate-500">
-                        Son okunma: {new Date(read.last_read_at).toLocaleDateString('tr-TR')}
+                        Son güncelleme: {new Date(read.updated_at).toLocaleDateString('tr-TR')}
                       </div>
                     )}
                   </div>
@@ -102,7 +102,7 @@ const MagazineReadsStats = () => {
                           'border-gray-300 text-gray-600 dark:text-gray-400'}
                       `}
                     >
-                      👁️ {read.read_count}
+                      👁️ {read.read_count || 0}
                     </Badge>
                   </div>
                 </div>

@@ -11,14 +11,14 @@ export const useMagazineReads = (magazineId: string) => {
 
     const fetchReadCount = async () => {
       try {
-        // Get current read count
+        // Get current read count from magazine_issues table
         const { data, error } = await supabase
-          .from('magazine_reads')
+          .from('magazine_issues')
           .select('read_count')
-          .eq('magazine_id', magazineId)
+          .eq('id', magazineId)
           .single();
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        if (error && error.code !== 'PGRST116') {
           console.error('Error fetching read count:', error);
           return;
         }
@@ -36,16 +36,13 @@ export const useMagazineReads = (magazineId: string) => {
 
   const incrementReadCount = async () => {
     try {
-      // First try to update existing record
+      // Update read count in magazine_issues table
       const { data, error } = await supabase
-        .from('magazine_reads')
-        .upsert({
-          magazine_id: magazineId,
-          read_count: readCount + 1,
-          last_read_at: new Date().toISOString()
-        }, {
-          onConflict: 'magazine_id'
+        .from('magazine_issues')
+        .update({
+          read_count: readCount + 1
         })
+        .eq('id', magazineId)
         .select()
         .single();
 
@@ -71,16 +68,9 @@ export const useAllMagazineReads = () => {
     const fetchAllReads = async () => {
       try {
         const { data, error } = await supabase
-          .from('magazine_reads')
-          .select(`
-            magazine_id,
-            read_count,
-            last_read_at,
-            magazine_issues(
-              title,
-              issue_number
-            )
-          `)
+          .from('magazine_issues')
+          .select('id, title, issue_number, read_count, updated_at')
+          .not('read_count', 'is', null)
           .order('read_count', { ascending: false });
 
         if (error) {
